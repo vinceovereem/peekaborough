@@ -1,0 +1,104 @@
+[
+ {
+  "date": "2026-10-10",
+  "time": "12:30",
+  "opponent": "Leeds United",
+  "round": "Matchday 6"
+ },
+ {
+  "date": "2026-10-24",
+  "time": "15:00",
+  "opponent": "Everton",
+  "round": "Matchday 8"
+ },
+ {
+  "date": "2026-11-07",
+  "time": "15:00",
+  "opponent": "Hull City",
+  "round": "Matchday 10"
+ },
+ {
+  "date": "2026-11-28",
+  "time": "15:00",
+  "opponent": "Manchester City",
+  "round": "Matchday 12"
+ },
+ {
+  "date": "2026-12-12",
+  "time": "15:00",
+  "opponent": "Bournemouth",
+  "round": "Matchday 15"
+ },
+ {
+  "date": "2026-12-19",
+  "time": "15:00",
+  "opponent": "Manchester United",
+  "round": "Matchday 16"
+ },
+ {
+  "date": "2027-01-02",
+  "time": "15:00",
+  "opponent": "Ipswich Town",
+  "round": "Matchday 19"
+ },
+ {
+  "date": "2027-01-05",
+  "time": "19:30",
+  "opponent": "Brentford",
+  "round": "Matchday 20"
+ },
+ {
+  "date": "2027-01-23",
+  "time": "15:00",
+  "opponent": "Newcastle United",
+  "round": "Matchday 22"
+ },
+ {
+  "date": "2027-02-06",
+  "time": "15:00",
+  "opponent": "Liverpool",
+  "round": "Matchday 24"
+ },
+ {
+  "date": "2027-02-20",
+  "time": "15:00",
+  "opponent": "Fulham",
+  "round": "Matchday 26"
+ },
+ {
+  "date": "2027-03-03",
+  "time": "20:00",
+  "opponent": "Crystal Palace",
+  "round": "Matchday 28"
+ },
+ {
+  "date": "2027-03-20",
+  "time": "15:00",
+  "opponent": "Sunderland",
+  "round": "Matchday 30"
+ },
+ {
+  "date": "2027-04-17",
+  "time": "15:00",
+  "opponent": "Aston Villa",
+  "round": "Matchday 32"
+ },
+ {
+  "date": "2027-05-01",
+  "time": "15:00",
+  "opponent": "Tottenham Hotspur",
+  "round": "Matchday 34"
+ },
+ {
+  "date": "2027-05-15",
+  "time": "15:00",
+  "opponent": "Nottingham Forest",
+  "round": "Matchday 36"
+ },
+ {
+  "date": "2027-05-30",
+  "time": "16:00",
+  "opponent": "Brighton & Hove Albion",
+  "round": "Matchday 38"
+ }
+]

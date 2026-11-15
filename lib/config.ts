@@ -1,0 +1,66 @@
+import area from '../data/area.json' with { type: 'json' }
+
+export const APP_NAME = 'Peekaborough'
+
+// One area for now: the London Borough of Islington. Adding a second = making this a table.
+export const HOOD = {
+  name: 'Islington',
+  center: [-0.1035, 51.5462] as [number, number], // lng, lat — Highbury Corner, roughly the middle of the borough
+  /** The real borough boundary (written by scripts/import-osm.mjs). Everything outside is greyed out. */
+  ring: area.ring as [number, number][],
+  /** Places just over the border that are let in anyway (Finsbury Park, Clissold Park), with their own outlines. */
+  extras: area.extras as unknown as { name: string; ring: [number, number][] }[],
+  /** How far the camera may wander: far enough that any edge of the borough can sit mid-screen. */
+  bounds: [[area.bbox[0] - 0.09, area.bbox[1] - 0.06], [area.bbox[2] + 0.09, area.bbox[3] + 0.06]] as [[number, number], [number, number]],
+}
+
+/** Is this point inside the borough or one of the extra parks? (ray casting against each outline) */
+export function inArea(lng: number, lat: number): boolean {
+  return [HOOD.ring, ...HOOD.extras.map(e => e.ring)].some(r => {
+    let inside = false
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      if ((r[i][1] > lat) !== (r[j][1] > lat) && lng < (r[j][0] - r[i][0]) * (lat - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside
+    }
+    return inside
+  })
+}
+
+export const CATEGORIES = {
+  eat: { label: 'Eat', emoji: '🍜', color: '#ff8a5b' },
+  cafe: { label: 'Coffee', emoji: '☕', color: '#d9a273' },
+  drink: { label: 'Pubs & bars', emoji: '🍺', color: '#ffc93c' },
+  groceries: { label: 'Food shops', emoji: '🥕', color: '#8ddc7a' },
+  shop: { label: 'Shops', emoji: '🛍️', color: '#ff8fc0' },
+  services: { label: 'Services', emoji: '✂️', color: '#a99bff' },
+  health: { label: 'Health', emoji: '💊', color: '#5ad1c4' },
+  culture: { label: 'Culture', emoji: '🎭', color: '#c98bff' },
+  active: { label: 'Sport', emoji: '⚽', color: '#ff6b6b' },
+  green: { label: 'Parks', emoji: '🌳', color: '#63c974' },
+  community: { label: 'Community', emoji: '🏛️', color: '#7cc4ff' },
+  transport: { label: 'Transport', emoji: '🚇', color: '#6f8cff' },
+} as const
+export type Category = keyof typeof CATEGORIES
+export const CATEGORY_KEYS = Object.keys(CATEGORIES) as Category[]
+
+export const EVENT_KINDS = {
+  football: { label: 'Football', emoji: '⚽' },
+  music: { label: 'Music', emoji: '🎤' },
+  market: { label: 'Markets', emoji: '🧺' },
+  community: { label: 'Community', emoji: '🤝' },
+  sport: { label: 'Get active', emoji: '🏃' },
+  food: { label: 'Food & drink', emoji: '🍽️' },
+  arts: { label: 'Theatre & comedy', emoji: '🎭' },
+} as const
+export type EventKind = keyof typeof EVENT_KINDS
+
+export const LISTING_KINDS = {
+  sell: { label: 'For sale', emoji: '🏷️' },
+  free: { label: 'Free', emoji: '🎁' },
+  swap: { label: 'Swap', emoji: '🔁' },
+  wanted: { label: 'Wanted', emoji: '🔎' },
+  service: { label: 'Skills & help', emoji: '🧰' },
+} as const
+export type ListingKind = keyof typeof LISTING_KINDS
+
+// Demo mode = no Supabase keys: data lives in memory, sign-in is one click. See README.
+export const DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL

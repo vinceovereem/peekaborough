@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #25223a;
+  --color-paper: #fff8ea;
+  --color-sun: #ffd23f;
+  --color-tomato: #ff6b6b;
+  --color-grass: #86dd96;
+  --color-sky: #7fd3ff;
+  --color-grape: #b39dff;
+  --color-peach: #ffb894;
+  --color-bubble: #ff9cc8;
+  --font-display: var(--font-fredoka), ui-rounded, system-ui, sans-serif;
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --shadow-pop: 4px 4px 0 var(--color-ink);
+  --shadow-pop-sm: 2px 2px 0 var(--color-ink);
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* faint dotted "sketchbook" paper */
+  background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 9%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+h1, h2, h3, .font-display { font-family: var(--font-display); }
+:focus-visible { outline: 3px solid var(--color-grape); outline-offset: 2px; }
+
+@layer components {
+  .card { @apply rounded-2xl border-2 border-ink bg-white shadow-pop; }
+  .btn { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-ink bg-sun px-4 py-2 font-display font-semibold text-ink shadow-pop-sm transition-transform hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none disabled:cursor-wait disabled:opacity-60; }
+  .btn-white { @apply bg-white; }
+  .btn-ink { @apply bg-ink text-white; }
+  .btn-sm { @apply rounded-lg px-2.5 py-1 text-sm; }
+  .chip { @apply inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-ink bg-white px-3 py-1 text-sm font-bold whitespace-nowrap; }
+  .chip-on { @apply bg-ink text-white; }
+  .tag { @apply inline-flex items-center gap-1 rounded-md border border-ink/70 px-1.5 py-0.5 text-xs font-bold; }
+  .input { @apply w-full rounded-xl border-2 border-ink bg-white px-3 py-2 placeholder:text-ink/40; }
+  .label { @apply mb-1 block text-sm font-bold; }
+  .muted { @apply text-ink/60; }
+}
+
+/* ---------- map furniture (elements created by MapLibre, so styled globally) ---------- */
+.maplibregl-map { font-family: var(--font-sans); }
+.maplibregl-ctrl-group { border: 2px solid var(--color-ink) !important; border-radius: 12px !important; box-shadow: var(--shadow-pop-sm) !important; overflow: hidden; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+
+.event-pin {
+  cursor: pointer; white-space: nowrap; border: 2px solid var(--color-ink); border-radius: 999px; background: var(--color-sun);
+  padding: 2px 9px; font: 700 12px var(--font-display); color: var(--color-ink); box-shadow: var(--shadow-pop-sm);
+  animation: bob 2.4s ease-in-out infinite;
+}
+.event-pin.today { background: var(--color-tomato); color: white; }
+.event-pin::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: inherit; border: solid var(--color-ink); border-width: 0 2px 2px 0; transform: translateX(-50%) rotate(45deg); }
+.view-toggle { font: 700 13px var(--font-display) !important; color: var(--color-ink); }
+@keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+/* fingers need bigger targets than mouse pointers */
+@media (pointer: coarse) { .chip { min-height: 2.75rem; padding-inline: 1rem; font-size: 1rem; } .btn-sm { min-height: 2.5rem; } }
+@media (prefers-reduced-motion: reduce) { .event-pin { animation: none; } }
