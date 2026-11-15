@@ -14,9 +14,15 @@ export function Stars({ rating, count }: { rating: number | null; count?: number
   )
 }
 
+/** The clay badge for a place category: public/icons, cut from one modelled sheet by scripts/cut-icons.py. */
+export function CategoryIcon({ category, className = 'size-5' }: { category: Category; className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- twelve tiny static files; the image optimiser would only add a round trip
+  return <img src={`/icons/${category}.webp`} alt="" className={`inline-block shrink-0 align-[-0.25em] ${className}`} />
+}
+
 export function CategoryTag({ category, sub }: { category: Category; sub?: string | null }) {
   const c = CATEGORIES[category]
-  return <span className="tag" style={{ background: c.color }}>{c.emoji} {sub || c.label}</span>
+  return <span className="tag" style={{ background: c.color }}><CategoryIcon category={category} className="size-4" /> {sub || c.label}</span>
 }
 
 export function OpenBadge({ hours, now }: { hours: Hours | null; now: Date }) {

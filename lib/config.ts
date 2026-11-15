@@ -26,18 +26,18 @@ export function inArea(lng: number, lat: number): boolean {
 }
 
 export const CATEGORIES = {
-  eat: { label: 'Eat', emoji: '🍜', color: '#ff8a5b' },
-  cafe: { label: 'Coffee', emoji: '☕', color: '#d9a273' },
-  drink: { label: 'Pubs & bars', emoji: '🍺', color: '#ffc93c' },
-  groceries: { label: 'Food shops', emoji: '🥕', color: '#8ddc7a' },
-  shop: { label: 'Shops', emoji: '🛍️', color: '#ff8fc0' },
-  services: { label: 'Services', emoji: '✂️', color: '#a99bff' },
-  health: { label: 'Health', emoji: '💊', color: '#5ad1c4' },
-  culture: { label: 'Culture', emoji: '🎭', color: '#c98bff' },
-  active: { label: 'Sport', emoji: '⚽', color: '#ff6b6b' },
-  green: { label: 'Parks', emoji: '🌳', color: '#63c974' },
-  community: { label: 'Community', emoji: '🏛️', color: '#7cc4ff' },
-  transport: { label: 'Transport', emoji: '🚇', color: '#6f8cff' },
+  eat: { label: 'Eat', emoji: '🍜', color: '#eb7366' },
+  cafe: { label: 'Coffee', emoji: '☕', color: '#c19bcf' },
+  drink: { label: 'Pubs & bars', emoji: '🍺', color: '#f7c03d' },
+  groceries: { label: 'Food shops', emoji: '🥕', color: '#92cd96' },
+  shop: { label: 'Shops', emoji: '🛍️', color: '#66b9df' },
+  services: { label: 'Services', emoji: '✂️', color: '#f49fae' },
+  health: { label: 'Health', emoji: '💊', color: '#7fcbc3' },
+  culture: { label: 'Culture', emoji: '🎭', color: '#b082c5' },
+  active: { label: 'Sport', emoji: '⚽', color: '#b3cd60' },
+  green: { label: 'Parks', emoji: '🌳', color: '#83c6cf' },
+  community: { label: 'Community', emoji: '🏛️', color: '#f3a77f' },
+  transport: { label: 'Transport', emoji: '🚇', color: '#97aedb' },
 } as const
 export type Category = keyof typeof CATEGORIES
 export const CATEGORY_KEYS = Object.keys(CATEGORIES) as Category[]
