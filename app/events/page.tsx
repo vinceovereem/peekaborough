@@ -48,7 +48,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl border-2 border-ink bg-sun text-xl" aria-hidden>{EVENT_KINDS[e.kind].emoji}</span>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg leading-tight font-bold">{e.title} {e.price_pence != null && <span className={`tag align-middle ${e.price_pence === 0 ? 'bg-grass' : 'bg-sun'}`}>{formatPrice(e.price_pence)}</span>} {e.is_sample && <SampleTag />}</h3>
-                  <p className="text-sm font-bold">{formatTime(e.starts_at)} · {e.place ? <Link className="underline" href={`/place/${e.place.slug}`}>{e.venue_name}</Link> : e.venue_name}</p>
+                  <p className="text-sm font-bold">{formatTime(e.starts_at)} · <Link className="underline" href={e.place ? `/?place=${e.place.slug}` : `/?event=${e.id}`} title="See it on the map">📍 {e.venue_name}</Link></p>
                   {e.description && <p className="muted mt-1 text-sm">{e.description}</p>}
                   {e.url && <a href={e.url} target="_blank" rel="noreferrer" className="text-sm font-bold underline">{e.source ? `Tickets & details on ${e.source} ↗` : 'More info ↗'}</a>}
                 </div>

@@ -10,7 +10,7 @@ import { isOpenNow, formatDay, formatTime, formatPrice, dayKey } from '@/lib/hou
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
 import type { MapPlace, Event, Post } from '@/lib/types'
 
-type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; favourites: string[]; initialSlug?: string; now: string; askEnabled: boolean; signedIn: boolean }
+type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; favourites: string[]; initialSlug?: string; initialEvent?: string; now: string; askEnabled: boolean; signedIn: boolean }
 const venueKey = (e: Event) => `${e.lat.toFixed(4)},${e.lng.toFixed(4)}`
 
 const NO_PINS: MapPin[] = []
@@ -19,7 +19,7 @@ const readHideEvents = () => { try { return localStorage.getItem('hide-events') 
 // The server leaves empty fields out to keep the list small; put the defaults back.
 const BLANK = { subcategory: null, address: null, hours: null, cover_url: null, extra: {}, is_landmark: false, is_demo: false, verified: false, rating: null, review_count: 0 }
 
-export default function MapExplorer({ places: slim, events, posts, favourites, initialSlug, now: nowISO, askEnabled, signedIn }: Props) {
+export default function MapExplorer({ places: slim, events, posts, favourites, initialSlug, initialEvent, now: nowISO, askEnabled, signedIn }: Props) {
   const now = useMemo(() => new Date(nowISO), [nowISO])
   const places = useMemo(() => slim.map(p => ({ ...BLANK, ...p })), [slim])
   const [cat, setCat] = useState<Category | null>(null)
@@ -34,7 +34,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
   const toggleEvents = () => { setEventsChoice(!showEvents); try { localStorage.setItem('hide-events', showEvents ? '1' : '0') } catch { /* private window: works for this visit, just isn't remembered */ } }
   const favSet = useMemo(() => new Set(favourites), [favourites])
   const [placeId, setPlaceId] = useState<string | null>(() => places.find(p => p.slug === initialSlug)?.id ?? null)
-  const [venue, setVenue] = useState<string | null>(null)
+  const [venue, setVenue] = useState<string | null>(() => { const e = events.find(e => e.id === initialEvent); return e ? venueKey(e) : null })
   // null = not touched yet: the panel starts open on a desktop and tucked away on a phone
   const [panel, setPanel] = useState<boolean | null>(null)
   const [asking, setAsking] = useState(false)
@@ -50,7 +50,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
   }, [places, cat, q, openOnly, outside, favsOnly, favSet, now])
 
   // One bobbing label per venue with something on in the next fortnight.
-  const { pins, byVenue } = useMemo(() => {
+  const pins = useMemo(() => {
     const byVenue = new Map<string, Event[]>()
     for (const e of events) if (new Date(e.starts_at).getTime() - now.getTime() < 14 * 86400000) byVenue.set(venueKey(e), [...(byVenue.get(venueKey(e)) ?? []), e])
     const today = dayKey(nowISO)
@@ -58,11 +58,20 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
       const isToday = dayKey(first.starts_at) === today
       return { id, lng: first.lng, lat: first.lat, today: isToday, label: `${EVENT_KINDS[first.kind].emoji} ${isToday ? `Today ${formatTime(first.starts_at)}` : formatDay(first.starts_at)}` }
     })
-    return { pins, byVenue }
+    return pins
   }, [events, now, nowISO])
 
   const place = places.find(p => p.id === placeId) ?? null
-  const venueEvents = venue ? byVenue.get(venue) ?? events.filter(e => venueKey(e) === venue) : null
+  // everything on at the picked venue, with the event that was asked for (if any) on top
+  const venueEvents = useMemo(() => {
+    const list = venue ? events.filter(e => venueKey(e) === venue) : []
+    return list.length ? list.sort((a, b) => +(b.id === initialEvent) - +(a.id === initialEvent)) : null
+  }, [venue, events, initialEvent])
+  // the picked venue keeps its label even when event labels are switched off or its next date is weeks away
+  const shownPins = useMemo(() => {
+    const base = showEvents ? pins : NO_PINS, first = venueEvents?.[0]
+    return !first || base.some(p => p.id === venue) ? base : [...base, { id: venue!, lng: first.lng, lat: first.lat, today: false, label: `${EVENT_KINDS[first.kind].emoji} ${formatDay(first.starts_at)}` }]
+  }, [showEvents, pins, venue, venueEvents])
   const selected = useMemo(() => place ? { lng: place.lng, lat: place.lat, id: place.id } : venueEvents?.[0] ? { lng: venueEvents[0].lng, lat: venueEvents[0].lat } : null, [place, venueEvents])
   const matchToday = events.find(e => e.kind === 'football' && dayKey(e.starts_at) === dayKey(nowISO))
   const topRated = useMemo(() => places.filter(p => p.rating != null).sort((a, b) => b.rating! - a.rating! || b.review_count - a.review_count).slice(0, 3), [places])
@@ -75,7 +84,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
 
   return (
     <div className="relative h-dvh overflow-hidden">
-      <CartoonMap places={shown} pins={showEvents ? pins : NO_PINS} selected={selected} onPlace={pickPlace} onPin={pickVenue} />
+      <CartoonMap places={shown} pins={shownPins} selected={selected} onPlace={pickPlace} onPin={pickVenue} />
 
       {/* search + filters — one tap hides the lot */}
       <div className="pointer-events-none absolute inset-x-0 top-[68px] z-10 px-2 sm:top-[76px] sm:px-3">
