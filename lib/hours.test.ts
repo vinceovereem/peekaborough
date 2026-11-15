@@ -77,6 +77,13 @@ test('matching a place to its Google listing by name', () => {
   assert.ok(sameName('Café Olé', 'Cafe Ole Islington'))           // accents and generic words ignored
   assert.ok(sameName('The Coffee House', 'the coffee house'))      // only everyday words: must match exactly
   assert.ok(!sameName('The Coffee House', 'The Coffee Shop'))
+  assert.ok(sameName('Emirates Stadium', 'Arsenal - Emirates Stadium'))
+  assert.ok(sameName('Costa', 'Costa Coffee'))
   assert.ok(!sameName('Arsenal Barbers', 'Blackstock Dry Cleaners'), 'a neighbour is not a match')
+  // neighbours that share the area name or the trade are still different businesses
+  assert.ok(!sameName('Highbury Dental', 'Highbury Pharmacy'))
+  assert.ok(!sameName('Arsenal Barbers', 'Blackstock Barbers'))
+  assert.ok(!sameName('Angel', 'Islington High Street'))
+  assert.ok(!sameName('Screen on the Green', 'Everyman'), 'a rebranded listing is refused rather than guessed')
   assert.ok(!sameName('Union Chapel', ''))
 })
