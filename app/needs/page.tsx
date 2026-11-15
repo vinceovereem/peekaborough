@@ -13,10 +13,10 @@ export default async function NeedsPage({ searchParams }: { searchParams: Promis
   const [user, flash] = await Promise.all([requireUser(), searchParams])
   const wishes = await repo.wishes(user.id)
   return (
-    <Shell title={`What ${HOOD.name} needs`} intro="A fishmonger? A safer crossing? Say it, then vote ideas up or down — a ranked list the council and new businesses can act on." flash={flash}>
+    <Shell title={`What ${HOOD.name} needs`} intro="Is something missing round here? Say it, then vote ideas up or down — a ranked list the council and new businesses can act on." flash={flash}>
       <form action={createWish} className="card mb-8 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <input type="hidden" name="_from" value="/needs" />
-        <div><label className="label" htmlFor="title">We need…</label><input id="title" name="title" required maxLength={100} className="input" placeholder="A late-opening pharmacy" /></div>
+        <div><label className="label" htmlFor="title">We need…</label><input id="title" name="title" required maxLength={100} className="input" placeholder="e.g. more bike parking" /></div>
         <div><label className="label" htmlFor="description">Why? <span className="muted font-normal">(optional)</span></label><input id="description" name="description" maxLength={600} className="input" /></div>
         <SubmitButton>Add it</SubmitButton>
       </form>

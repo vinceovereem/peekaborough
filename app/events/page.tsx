@@ -70,7 +70,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <summary className="font-display cursor-pointer text-xl font-bold">➕ Know about something happening? Suggest it</summary>
         <form action={suggestEvent} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input type="hidden" name="_from" value="/events" />
-          <div className="sm:col-span-2"><label className="label" htmlFor="title">What is it?</label><input id="title" name="title" required maxLength={120} className="input" placeholder="Street party on Aubert Park" /></div>
+          <div className="sm:col-span-2"><label className="label" htmlFor="title">What is it?</label><input id="title" name="title" required maxLength={120} className="input" placeholder="e.g. a street party" /></div>
           <div><label className="label" htmlFor="kind">Type</label><select id="kind" name="kind" className="input">{(Object.keys(EVENT_KINDS) as EventKind[]).filter(k => k !== 'football').map(k => <option key={k} value={k}>{EVENT_KINDS[k].label}</option>)}</select></div>
           <div><label className="label" htmlFor="venue">Where?</label><input id="venue" name="venue" required maxLength={120} className="input" placeholder="Highbury Fields" /></div>
           <div><label className="label" htmlFor="date">Date</label><input id="date" name="date" type="date" required className="input" /></div>
