@@ -91,6 +91,16 @@ a non-Google map. So:
 Not yet tested with a real key: the request shapes follow Google's current docs, and a rejected key is
 handled, but no live response has been through it.
 
+## Guides (the pages search engines can read)
+
+Everything else needs a sign-in, so search engines can only list the front page, the legal pages and
+`/guides`. Each guide is a filter over the real places (`lib/guides.ts`): pubs with outdoor seating,
+places to eat by cuisine, what is mapped within 600 m of each station, and so on. Nothing on them is
+written by hand, and they never call Google. The pages are built ahead of time and rebuilt once a
+day, read with a signed-out database client, so they show exactly what the public may see. To add a
+guide, add an entry to `GUIDES`; the index and sitemap pick it up. The only way in is the Guides
+link in the footer, next to Privacy and Terms.
+
 ## Calendars
 
 `/calendar?kinds=football,music` is a public iCalendar feed (published events only), and
