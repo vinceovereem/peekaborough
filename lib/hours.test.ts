@@ -7,6 +7,7 @@ import { parseHours } from '../scripts/import-osm.mjs'
 import { sunTimes } from './sun.ts'
 import { toICS } from './calendar.ts'
 import { parseFeed } from './news.ts'
+import { sameName } from './links.ts'
 
 const closed = { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null }
 const cafe: Hours = { ...closed, mon: { open: '08:00', close: '17:00' } }
@@ -68,4 +69,14 @@ test('news feeds: RSS and Atom', () => {
   const atom = `<feed><title>Sub</title><entry><title>Free sofa &amp; chair</title><link href="https://example.com/p?a=1&amp;b=2" /><updated>2026-11-15T13:07:46+00:00</updated><content type="html">&lt;b&gt;x&lt;/b&gt;</content></entry></feed>`
   assert.deepEqual(parseFeed(atom, 'Sub'), [{ title: 'Free sofa & chair', url: 'https://example.com/p?a=1&b=2', source: 'Sub', date: '2026-11-15T13:07:46.000Z' }])
   assert.deepEqual(parseFeed('<html>not a feed</html>', 'x'), [])
+})
+
+test('matching a place to its Google listing by name', () => {
+  assert.ok(sameName("Sadler's Wells", 'Sadler’s Wells Theatre'))
+  assert.ok(sameName('Beam', 'Beam Highbury'))
+  assert.ok(sameName('Café Olé', 'Cafe Ole Islington'))           // accents and generic words ignored
+  assert.ok(sameName('The Coffee House', 'the coffee house'))      // only everyday words: must match exactly
+  assert.ok(!sameName('The Coffee House', 'The Coffee Shop'))
+  assert.ok(!sameName('Arsenal Barbers', 'Blackstock Dry Cleaners'), 'a neighbour is not a match')
+  assert.ok(!sameName('Union Chapel', ''))
 })
