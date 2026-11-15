@@ -24,9 +24,9 @@ export default async function ManagePage({ params, searchParams }: { params: Pro
 
   return (
     <Shell title={place.name} intro="This is your page. Changes go live straight away." flash={flash}>
-      <p className="-mt-3 mb-6"><Link href={`/place/${place.slug}`} className="font-bold underline">See it as neighbours do →</Link></p>
+      <p className="-mt-3 mb-6 flex flex-wrap gap-x-5 gap-y-1"><Link href="/business" className="font-bold underline">← My businesses</Link><Link href={`/place/${place.slug}`} className="font-bold underline">See it as neighbours do →</Link></p>
       <div className="grid gap-6 lg:grid-cols-2">
-        <form action={savePlace} className="card grid content-start gap-3 p-5">
+        <form action={savePlace} id="basics" className="card grid scroll-mt-24 content-start gap-3 p-5">
           {hidden}
           <h2 className="text-2xl font-bold">The basics</h2>
           <div><label className="label" htmlFor="name">Name</label><input id="name" name="name" required maxLength={120} defaultValue={place.name} className="input" /></div>
@@ -57,7 +57,7 @@ export default async function ManagePage({ params, searchParams }: { params: Pro
         </form>
 
         <div className="space-y-6">
-          <section className="card p-5">
+          <section id="news" className="card scroll-mt-24 p-5">
             <h2 className="mb-2 text-2xl font-bold">📣 Post news</h2>
             <form action={addPost} className="grid gap-2">
               {hidden}<input name="title" required maxLength={120} className="input" placeholder="Headline — new menu, new hours, new puppy…" aria-label="Headline" />
@@ -69,7 +69,7 @@ export default async function ManagePage({ params, searchParams }: { params: Pro
             ))}</ul>
           </section>
 
-          <section className="card p-5">
+          <section id="events" className="card scroll-mt-24 p-5">
             <h2 className="mb-2 text-2xl font-bold">🎟️ Events</h2>
             <form action={addPlaceEvent} className="grid gap-2 sm:grid-cols-2">
               {hidden}<input name="title" required maxLength={120} className="input sm:col-span-2" placeholder="Quiz night, tasting, live music…" aria-label="Event title" />
@@ -85,7 +85,7 @@ export default async function ManagePage({ params, searchParams }: { params: Pro
           </section>
         </div>
 
-        <section className="card p-5 lg:col-span-2">
+        <section id="menu" className="card scroll-mt-24 p-5 lg:col-span-2">
           <h2 className="mb-2 text-2xl font-bold">🍽️ Menu &amp; prices</h2>
           <form action={addMenuItem} className="grid gap-2 sm:grid-cols-[1fr_1.4fr_2fr_6rem_auto] sm:items-end">
             {hidden}

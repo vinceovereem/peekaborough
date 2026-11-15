@@ -41,9 +41,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <div><SubmitButton>Save</SubmitButton></div>
           </form>
           <section className="card bg-sky/40 p-5">
-            <h2 className="text-xl font-bold">🏪 {user.is_owner ? 'Your business' : 'Run a business here?'}</h2>
+            <h2 className="text-xl font-bold">🏪 {user.is_owner ? 'My businesses' : 'Run a business here?'}</h2>
             <p className="my-2 text-sm">{user.is_owner ? 'Update your hours, menu, news and events.' : 'Claim your page for free and keep your hours, menu, prices and news up to date yourself.'}</p>
-            <Link href="/business" className="btn w-full">{user.is_owner ? 'Open my business' : 'Claim my business'}</Link>
+            <Link href="/business" className="btn w-full">{user.is_owner ? 'Open My businesses' : 'Claim my business'}</Link>
           </section>
           {!user.is_admin && <section className="card bg-grass/40 p-5">
             <h2 className="text-xl font-bold">🛠️ Help run Peekaborough</h2>
