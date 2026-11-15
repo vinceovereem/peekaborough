@@ -58,4 +58,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 @keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
 /* fingers need bigger targets than mouse pointers */
 @media (pointer: coarse) { .chip { min-height: 2.75rem; padding-inline: 1rem; font-size: 1rem; } .btn-sm { min-height: 2.5rem; } }
+/* the map's filter row stays compact on phones so the map keeps the screen */
+@media (pointer: coarse) { .map-filters .chip { min-height: 2.25rem; padding-inline: 0.7rem; font-size: 0.875rem; } }
 @media (prefers-reduced-motion: reduce) { .event-pin { animation: none; } }

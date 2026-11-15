@@ -3,7 +3,7 @@
 //
 // Eventbrite is not here on purpose: it withdrew its public event-search API, so the only supported
 // way to list Eventbrite events is for the organiser to add them (or their Eventbrite link) by hand.
-import { HOOD, inArea, type EventKind } from './config'
+import { APP_NAME, SITE_URL, HOOD, inArea, type EventKind } from './config'
 import { repo } from './repo'
 import type { Event } from './types'
 
@@ -11,19 +11,28 @@ export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venu
 
 const [lng, lat] = HOOD.center
 const get = async (url: string) => {
-  const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(20000) })
+  // Skiddle's terms ask every call to say which app it comes from
+  const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': `${APP_NAME}/1.0 (+${SITE_URL})` } })
   if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`)
   return res.json()
 }
 const pence = (v: unknown) => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(n) ? Math.round(n * 100) : null }
+// ponytail: each source is read soonest-first, at most MAX_PAGES pages. Both search circles reach into central
+// London, so on a busy month the far-off dates get cut; search smaller circles or by venue if that bites.
+const MAX_PAGES = 5
 const clip = (s: unknown, max: number) => typeof s === 'string' && s.trim() ? s.trim().replace(/<[^>]+>/g, '').slice(0, max) : null
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- third-party JSON */
 const SKIDDLE_KINDS: Record<string, EventKind> = { FEST: 'music', LIVE: 'music', CLUB: 'music', THEATRE: 'arts', COMEDY: 'arts', EXHIB: 'arts', ARTS: 'arts', SPORT: 'sport', BARPUB: 'food' }
 /** https://github.com/Skiddle/web-api — free key from skiddle.com/api/join.php. Radius is in miles. */
 async function skiddle(key: string): Promise<ExternalEvent[]> {
-  const d = await get(`https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100`)
-  return (d.results ?? []).flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
+  const found: any[] = []
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const batch = (await get(`https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100&offset=${page * 100}`)).results ?? []
+    found.push(...batch)
+    if (batch.length < 100) break
+  }
+  return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
     starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: e.link ?? null,
@@ -33,8 +42,13 @@ async function skiddle(key: string): Promise<ExternalEvent[]> {
 
 /** https://developer.ticketmaster.com — Discovery API v2, free key. Covers the Emirates, O2 Academy Islington, Union Chapel and more. */
 async function ticketmaster(key: string): Promise<ExternalEvent[]> {
-  const d = await get(`https://app.ticketmaster.com/discovery/v2/events.json?apikey=${key}&latlong=${lat},${lng}&radius=5&unit=km&size=200&sort=date,asc&startDateTime=${new Date().toISOString().slice(0, 19)}Z`)
-  return (d._embedded?.events ?? []).flatMap((e: any): ExternalEvent[] => {
+  const found: any[] = [], from = `${new Date().toISOString().slice(0, 19)}Z`
+  for (let page = 0; page < MAX_PAGES; page++) { // 5 x 200 is also the furthest Ticketmaster lets anyone page
+    const d = await get(`https://app.ticketmaster.com/discovery/v2/events.json?apikey=${key}&latlong=${lat},${lng}&radius=5&unit=km&size=200&page=${page}&sort=date,asc&startDateTime=${from}`)
+    found.push(...(d._embedded?.events ?? []))
+    if (page + 1 >= (d.page?.totalPages ?? 1)) break
+  }
+  return found.flatMap((e: any): ExternalEvent[] => {
     const venue = e._embedded?.venues?.[0], segment = e.classifications?.[0]?.segment?.name, genre = e.classifications?.[0]?.genre?.name
     if (!e.id || !e.dates?.start?.dateTime || !venue?.location) return []
     return [{

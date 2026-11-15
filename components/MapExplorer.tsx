@@ -97,14 +97,14 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
             {/* untouched, the panel is open on desktop and closed on phones (CSS decides); the first tap flips whichever that is */}
             <button onClick={() => setPanel(p => !(p ?? window.matchMedia('(min-width: 1024px)').matches))} aria-label="What's popping" title="What's popping" className={`btn shrink-0 ${panel ? 'btn-ink' : panel === null ? 'lg:bg-ink lg:text-white' : ''}`}>🔥</button>
           </div>
-          {tools && <div className="pointer-events-auto mt-2 flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none]">
+          {tools && <div className="map-filters pointer-events-auto mt-2 flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none]">
             <button onClick={() => setOpenOnly(!openOnly)} aria-pressed={openOnly} className={`chip shadow-pop-sm ${openOnly ? 'bg-grass' : ''}`}>🟢 Open now</button>
             <button onClick={toggleEvents} aria-pressed={showEvents} title={showEvents ? 'Hide the event bubbles on the map' : 'Show the event bubbles on the map'} className={`chip shadow-pop-sm ${showEvents ? 'bg-sun' : 'opacity-70'}`}>{showEvents ? '🎟️ Events on' : '🎟️ Events off'}</button>
             {favourites.length > 0 && <button onClick={() => setFavsOnly(!favsOnly)} aria-pressed={favsOnly} className={`chip shadow-pop-sm ${favsOnly ? 'bg-bubble' : ''}`}>♥ My favourites</button>}
             <button onClick={() => setOutside(!outside)} aria-pressed={outside} className={`chip shadow-pop-sm ${outside ? 'bg-sun' : ''}`}>☀️ Sit outside</button>
             {CATEGORY_KEYS.map(k => (
               <button key={k} onClick={() => setCat(cat === k ? null : k)} aria-pressed={cat === k} className="chip shadow-pop-sm" style={cat === k ? { background: CATEGORIES[k].color } : undefined}>
-                <CategoryIcon category={k} className="size-6 -ml-1.5" /> {CATEGORIES[k].label}
+                <CategoryIcon category={k} className="-ml-1 size-5 sm:-ml-1.5 sm:size-6" /> {CATEGORIES[k].label}
               </button>
             ))}
           </div>}

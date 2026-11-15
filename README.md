@@ -73,6 +73,13 @@ obvious first conversation).
 Not yet tested with real keys: the Skiddle and Ticketmaster connectors follow their published docs
 but no live response has been through them.
 
+To switch the automatic events on, three settings go on the Vercel project (Production):
+`TICKETMASTER_API_KEY` (developer.ticketmaster.com), `SKIDDLE_API_KEY` (skiddle.com/api/join.php) and
+`CRON_SECRET` (any long random string; without it the daily cron is refused). Then redeploy and press
+"Sync now" in the back office once. Each source is read soonest-first, up to 1,000 nearby events a day,
+and only those inside the borough are kept. Skiddle's terms: non-commercial use only, credit Skiddle by
+name and logo, and link to the event on Skiddle.
+
 ## Ask (the AI guide)
 
 The ✨ Ask button on the map opens a chat that answers from the app's own data. Set

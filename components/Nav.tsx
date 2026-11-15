@@ -2,12 +2,15 @@ import Link from 'next/link'
 import { APP_NAME, HOOD, DEMO } from '@/lib/config'
 import type { User } from '@/lib/types'
 import { Logo } from './ui'
+import MenuButton from './MenuButton'
 import { signOut } from '@/app/login/actions'
 
 const LINKS = [['/', '🗺️', 'Map'], ['/events', '🎟️', "What's on"], ['/news', '📰', 'News'], ['/trade', '🔁', 'Trade'], ['/needs', '💡', 'Needs']] as const
 
 /** `user` is null for someone looking around without an account: same pages, a Sign in button instead of their name. */
 export default function Nav({ user, floating }: { user: User | null; floating?: boolean }) {
+  // people with a verified business page also get the place they manage it from
+  const pages = [...LINKS, ...(user?.is_owner ? [['/business', '🏪', 'My businesses'] as const] : []), ['/profile', '👤', 'My profile'] as const]
   return (
     <header className={floating ? 'pointer-events-none absolute inset-x-0 top-0 z-20 p-2 sm:p-3' : 'sticky top-0 z-20 p-2 sm:p-3'}>
       <div className="card pointer-events-auto mx-auto flex max-w-6xl items-center gap-2 px-3 py-2">
@@ -18,9 +21,9 @@ export default function Nav({ user, floating }: { user: User | null; floating?: 
             <span className="muted text-xs font-bold">{HOOD.name}</span>
           </span>
         </Link>
-        <nav className="flex flex-1 gap-1 overflow-x-auto px-1 [scrollbar-width:none]">
-          {/* people with a verified business page also get the place they manage it from */}
-          {[...LINKS, ...(user?.is_owner ? [['/business', '🏪', 'My businesses'] as const] : []), ['/profile', '👤', 'My profile'] as const].map(([href, emoji, label]) => (
+        <MenuButton links={user?.is_admin ? [...pages, ['/admin', '🛠️', 'Admin']] : pages} />
+        <nav className="hidden flex-1 gap-1 overflow-x-auto px-1 [scrollbar-width:none] lg:flex">
+          {pages.map(([href, emoji, label]) => (
             <Link key={href} href={href} className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-bold whitespace-nowrap hover:bg-sun/50">
               <span aria-hidden>{emoji}</span> {label}
             </Link>
