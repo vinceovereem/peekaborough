@@ -28,7 +28,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       {nextMatch && (
         <div className="card mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 bg-tomato p-4 text-white">
           <span className="text-4xl" aria-hidden>🏟️</span>
-          <div><p className="text-sm font-bold uppercase opacity-90">Next at the Emirates</p><p className="font-display text-2xl font-bold">{nextMatch.title}</p><p>{formatDay(nextMatch.starts_at)}, kick-off {formatTime(nextMatch.starts_at)} — streets, pubs and stations get busy from about three hours before.</p></div>
+          <div><p className="text-sm font-bold uppercase opacity-90">Next at the Emirates</p><p className="font-display text-2xl font-bold">{nextMatch.title}</p><p>{formatDay(nextMatch.starts_at)}, kick-off {formatTime(nextMatch.starts_at)}. Expect the area around the stadium to be busy before and after.</p></div>
         </div>
       )}
       {/* one filter drives both the list below and what the calendar buttons add */}

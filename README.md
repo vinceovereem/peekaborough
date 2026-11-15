@@ -14,19 +14,19 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-With no environment variables the app runs in **demo mode**: real places and fixtures, sample people,
-data held in memory. The sign-in page offers three one-click personas:
+With no environment variables the app runs in **preview mode**: the real places and events, held in
+memory, with three one-click guest accounts on the sign-in page:
 
-| Persona | Try |
+| Guest | Try |
 |---|---|
 | Resident | Explore the map, review a place, post in Trade, vote ideas up or down in Needs, suggest an event, edit "My profile" |
-| Business | "My business" → manage Fieldside Café: hours, menu and prices, news, events |
-| Admin | "Admin" → approve the pending ownership claim and the suggested event, hide a review |
+| Business owner | Find a business and claim it; once an admin approves, manage its hours, menu, news and events |
+| Admin | "Admin" → approve ownership claims and suggested events, hide a review |
 
-Demo mode also deploys as-is (no keys needed) if you just want a link to show people. Changes made in
-demo mode are not kept: they reset on restart and aren't shared between server instances.
+Preview mode also deploys as-is (no keys needed). Anything a guest adds is temporary: it resets on
+restart and isn't shared between server instances.
 
-## What's real and what's sample
+## Where the content comes from
 
 | | Source |
 |---|---|
@@ -37,12 +37,13 @@ demo mode are not kept: they reset on restart and aren't shared between server i
 | Photos for ~150 landmarks, stations, theatres and churches | Wikimedia Commons (credited on the page) |
 | Outdoor seating flag (~260 places) | OpenStreetMap |
 | Arsenal home fixtures | openfootball, via `scripts/import-fixtures.mjs` (kick-off times move for TV) |
-| Highbury Fields and Finsbury Park parkruns | Weekly, Saturdays 9am |
+| Highbury Fields and Finsbury Park parkruns | parkrun: free, every Saturday at 9am |
 | Map | OpenFreeMap vector tiles (no API key), restyled in `lib/map-style.ts`. Homes are grey; a building is coloured only if there's a venue in it |
 | Pictures for everything else | Drawn on the fly: a little shopfront with the place's name on the sign (`components/PlacePicture.tsx`) |
-| Three "(demo)" businesses, their menus, news and reviews; trade listings; wishes; a few events | **Made up**, marked "Sample" in the UI, and only present in demo mode |
 
-No real business has invented content attached to it.
+There is **no invented content**: no made-up businesses, people, reviews, listings, wishes or events.
+Reviews, Trade and Needs start empty and fill up only with what people add. Landmark descriptions are
+kept to plain facts (what a place is and where).
 
 ## What's automatic, and what isn't
 
@@ -119,7 +120,7 @@ The live database starts with the real places and events only; reviews, listings
 
 ## How it fits together
 
-- `lib/memory.ts` (demo) and `lib/supabase-repo.ts` (live) implement one interface; `lib/repo.ts` picks.
+- `lib/memory.ts` (preview) and `lib/supabase-repo.ts` (live) implement one interface; `lib/repo.ts` picks.
 - `app/actions.ts` — every write: validated with Zod, checked for ownership/admin, then sent to the repo.
 - `supabase/migrations/` — schema and row-level security. Residents write only their own rows, owners
   edit only their own place (and can't verify or hide it), admin actions run server-side with the

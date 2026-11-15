@@ -28,7 +28,7 @@ export default function Nav({ user, floating }: { user: User; floating?: boolean
         <form action={signOut} className="flex shrink-0 items-center gap-2">
           <span className="hidden text-right text-xs leading-tight md:block">
             <Link href="/profile" className="block font-bold hover:underline">{user.name}</Link>
-            {DEMO && <span className="muted">demo mode</span>}
+            {DEMO && <span className="muted">preview</span>}
           </span>
           <button className="btn btn-white btn-sm" title="Sign out">{DEMO ? 'Switch' : 'Sign out'}</button>
         </form>
