@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import CartoonMap, { type MapPin } from './CartoonMap'
 import PlacePicture from './PlacePicture'
 import AskPanel from './AskPanel'
@@ -14,6 +14,8 @@ type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; favourites: s
 const venueKey = (e: Event) => `${e.lat.toFixed(4)},${e.lng.toFixed(4)}`
 
 const NO_PINS: MapPin[] = []
+const noSubscription = () => () => {}
+const readHideEvents = () => { try { return localStorage.getItem('hide-events') === '1' } catch { return false } }
 // The server leaves empty fields out to keep the list small; put the defaults back.
 const BLANK = { subcategory: null, address: null, hours: null, cover_url: null, extra: {}, is_landmark: false, is_demo: false, verified: false, rating: null, review_count: 0 }
 
@@ -26,9 +28,10 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
   const [outside, setOutside] = useState(false)
   const [favsOnly, setFavsOnly] = useState(false)
   // Event bubbles can be switched off for a cleaner map; the choice is remembered on this device.
-  const [showEvents, setShowEvents] = useState(true)
-  useEffect(() => { try { if (localStorage.getItem('hide-events') === '1') setShowEvents(false) } catch { /* private window: just keep the default */ } }, [])
-  const toggleEvents = () => { const next = !showEvents; setShowEvents(next); try { localStorage.setItem('hide-events', next ? '0' : '1') } catch { /* not remembered, still works */ } }
+  const storedHidden = useSyncExternalStore(noSubscription, readHideEvents, () => false)
+  const [eventsChoice, setEventsChoice] = useState<boolean | null>(null) // null until toggled in this visit
+  const showEvents = eventsChoice ?? !storedHidden
+  const toggleEvents = () => { setEventsChoice(!showEvents); try { localStorage.setItem('hide-events', showEvents ? '1' : '0') } catch { /* private window: works for this visit, just isn't remembered */ } }
   const favSet = useMemo(() => new Set(favourites), [favourites])
   const [placeId, setPlaceId] = useState<string | null>(() => places.find(p => p.slug === initialSlug)?.id ?? null)
   const [venue, setVenue] = useState<string | null>(null)
