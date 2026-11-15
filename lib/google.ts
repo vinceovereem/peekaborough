@@ -45,7 +45,9 @@ async function findId(place: Place): Promise<string | null> {
 }
 
 export async function googlePlace(place: Place): Promise<GooglePlace | null> {
-  if (!KEY || place.is_demo) return null
+  // Stations are skipped: their pages already carry live TfL information, and searching Google for
+  // "Angel" by name and address returns the street or the shopping centre, not the station.
+  if (!KEY || place.is_demo || place.category === 'transport') return null
   try {
     let id = place.google_place_id
     if (!id) {
