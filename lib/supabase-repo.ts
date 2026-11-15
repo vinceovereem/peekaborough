@@ -55,8 +55,9 @@ export const supabaseRepo: Repo = {
     return rows.map((r: any) => ({ ...r, author: author(r) })) as Listing[]
   },
   async wishes(userId) {
+    // wishes relate to profiles twice (the author, and voters through wish_votes), so the author link is named
     // ponytail: pulls every vote row to count them; move to a count view once wishes get hundreds of votes.
-    const rows = ok(await (await createClient()).from('wishes').select('*, profiles(display_name), wish_votes(user_id, value)').eq('status', 'visible').limit(200))
+    const rows = ok(await (await createClient()).from('wishes').select('*, profiles!wishes_user_id_fkey(display_name), wish_votes(user_id, value)').eq('status', 'visible').limit(200))
     return rows.map((r: any): Wish => ({ id: r.id, user_id: r.user_id, title: r.title, description: r.description, status: r.status, created_at: r.created_at, author: author(r), ...tally(r, userId) }))
       .sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs) || b.created_at.localeCompare(a.created_at))
   },
@@ -128,7 +129,7 @@ export const supabaseRepo: Repo = {
       db.from('events').select('*').eq('status', 'pending').order('starts_at'),
       db.from('reviews').select('*, profiles(display_name), place:places(name,slug)').order('created_at', { ascending: false }).limit(30),
       db.from('listings').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(30),
-      db.from('wishes').select('*, profiles(display_name), wish_votes(user_id, value)').order('created_at', { ascending: false }).limit(30),
+      db.from('wishes').select('*, profiles!wishes_user_id_fkey(display_name), wish_votes(user_id, value)').order('created_at', { ascending: false }).limit(30),
       db.auth.admin.listUsers({ perPage: 1000 }), // ponytail: fine below 1000 users; look claimants up one by one after that
     ])
     const emailOf = new Map(emails.data?.users.map(u => [u.id, u.email ?? null]))
