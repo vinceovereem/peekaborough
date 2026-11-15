@@ -62,5 +62,14 @@ export const LISTING_KINDS = {
 } as const
 export type ListingKind = keyof typeof LISTING_KINDS
 
+/** Where the site lives, for links in calendars, sitemaps and search results. */
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+  ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000')
+
+/** Who runs the site; shown on the legal pages. */
+export const OPERATOR = { name: 'Vincent van Overeem', email: 'vincent.vanovereem@gmail.com' }
+/** Where would-be admins book a call after applying. */
+export const ADMIN_CALL_URL = 'https://calendar.app.google/B39DmXdXRpv8ZZzt8'
+
 // Demo mode = no Supabase keys: data lives in memory, sign-in is one click. See README.
 export const DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL

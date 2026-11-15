@@ -10,13 +10,13 @@ const slim = (p: MapPlace) => Object.fromEntries(Object.entries(p).filter(([, v]
 
 export default async function MapPage({ searchParams }: { searchParams: Promise<{ place?: string }> }) {
   const user = await requireUser()
-  const [{ place }, places, events, posts] = await Promise.all([searchParams, repo.mapPlaces(), repo.events(), repo.latestPosts(3)])
+  const [{ place }, places, events, posts, favourites] = await Promise.all([searchParams, repo.mapPlaces(), repo.events(), repo.latestPosts(3), repo.favoriteIds(user.id)])
   return (
     <>
       <Nav user={user} floating />
       {/* ponytail: ships every place in the borough to the browser (~3,500, about 150 KB gzipped).
           Switch to vector tiles or a bounding-box API before covering several boroughs. */}
-      <MapExplorer places={places.map(slim)} events={events.slice(0, 80)} posts={posts} initialSlug={place} now={new Date().toISOString()} askEnabled={ASK_ENABLED} />
+      <MapExplorer places={places.map(slim)} events={events.slice(0, 80)} posts={posts} favourites={favourites} initialSlug={place} now={new Date().toISOString()} askEnabled={ASK_ENABLED} />
     </>
   )
 }

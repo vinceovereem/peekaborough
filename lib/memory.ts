@@ -5,7 +5,7 @@
 // and lib/supabase-repo.ts takes over with the same interface.
 import rawPlaces from '@/data/places.json'
 import { DEMO_USERS, realEvents } from '@/data/demo'
-import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim } from './types'
+import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser } from './types'
 import type { ExternalEvent } from './sources'
 
 type Row = Omit<Place, 'rating' | 'review_count'>
@@ -16,6 +16,7 @@ function init() {
     owners: new Set<string>(), menu: [] as MenuItem[], posts: [] as Post[], reviews: [] as Review[],
     events: realEvents(), listings: [] as Listing[], wishes: [] as WishRow[], claims: [] as Claim[],
     names: Object.fromEntries(DEMO_USERS.map(u => [u.id, u.name])) as Record<string, string>,
+    favorites: new Set<string>(), applications: [] as AdminApplication[],
   }
 }
 const g = globalThis as unknown as { __patch?: ReturnType<typeof init> }
@@ -64,6 +65,16 @@ export const memoryRepo = {
     db().names[userId] = name
     for (const row of [...db().reviews, ...db().listings]) if (row.user_id === userId) row.author = name
     const demo = DEMO_USERS.find(u => u.id === userId); if (demo) demo.name = name
+  },
+  async favoriteIds(userId: string): Promise<string[]> { return [...db().favorites].filter(k => k.startsWith(userId + '|')).map(k => k.split('|')[1]) },
+  async myFavorites(userId: string): Promise<Place[]> { const ids = new Set(await memoryRepo.favoriteIds(userId)); return db().places.filter(p => ids.has(p.id) && p.status === 'published').map(withRating) },
+  /** Saves a place to someone's favourites, or removes it if it is already there. */
+  async toggleFavorite(userId: string, placeId: string) { const k = `${userId}|${placeId}`; if (!db().favorites.delete(k)) db().favorites.add(k) },
+  /** The person's most recent application to become an admin, if any. */
+  async myApplication(userId: string): Promise<AdminApplication | null> { return newest(db().applications.filter(a => a.user_id === userId))[0] ?? null },
+  async createApplication(user: { id: string }, a: Pick<AdminApplication, 'full_name' | 'email' | 'phone' | 'address' | 'years_in_area' | 'occupation' | 'favourite_thing'>) {
+    if (db().applications.some(x => x.user_id === user.id && x.status === 'pending')) return
+    db().applications.push({ ...a, id: id(), user_id: user.id, status: 'pending', admin_note: null, created_at: now() })
   },
   async myClaims(userId: string): Promise<Claim[]> { return newest(db().claims.filter(c => c.user_id === userId)).map(toClaim) },
 
@@ -117,7 +128,7 @@ export const memoryRepo = {
   async uploadCover(placeId: string, file: File): Promise<string | null> { void placeId; void file; return null },
 
   // --- admin (callers must check requireAdmin first) ---
-  async adminData(): Promise<{ claims: Claim[]; pendingEvents: Event[]; reviews: Review[]; listings: Listing[]; wishes: Wish[]; counts: Record<'places' | 'verified' | 'reviews' | 'events' | 'listings' | 'wishes', number> }> {
+  async adminData(): Promise<{ claims: Claim[]; pendingEvents: Event[]; reviews: Review[]; listings: Listing[]; wishes: Wish[]; applications: AdminApplication[]; admins: AdminUser[]; counts: Record<'places' | 'verified' | 'reviews' | 'events' | 'listings' | 'wishes', number> }> {
     const d = db()
     return {
       claims: newest(d.claims).map(toClaim),
@@ -125,6 +136,8 @@ export const memoryRepo = {
       reviews: newest(d.reviews).slice(0, 30).map(r => ({ ...r, place: placeRef(r.place_id) })),
       listings: newest(d.listings).slice(0, 30),
       wishes: newest(d.wishes).slice(0, 30).map(w => toWish(w, null)),
+      applications: newest(d.applications).map(a => ({ ...a, account: { name: d.names[a.user_id] ?? 'Neighbour', email: null } })),
+      admins: DEMO_USERS.filter(u => u.is_admin).map(u => ({ id: u.id, name: u.name, email: u.email })),
       counts: { places: d.places.length, verified: d.places.filter(p => p.verified).length, reviews: d.reviews.length, events: d.events.filter(e => e.status === 'published' && upcoming(e)).length, listings: d.listings.filter(l => l.status === 'active').length, wishes: d.wishes.length },
     }
   },
@@ -133,6 +146,15 @@ export const memoryRepo = {
     Object.assign(c, { status: approve ? 'approved' : 'rejected', admin_note: note })
     if (approve) { db().owners.add(`${c.place_id}|${c.user_id}`); db().places.find(p => p.id === c.place_id)!.verified = true }
   },
+  /** Approving makes the applicant's account an admin. */
+  async decideApplication(applicationId: string, approve: boolean, note: string | null) {
+    const a = db().applications.find(a => a.id === applicationId && a.status === 'pending'); if (!a) return
+    Object.assign(a, { status: approve ? 'approved' : 'rejected', admin_note: note })
+    if (approve) await memoryRepo.setAdmin(a.user_id, true)
+  },
+  async setAdmin(userId: string, isAdmin: boolean) { const u = DEMO_USERS.find(u => u.id === userId); if (u) u.is_admin = isAdmin },
+  /** Looks an account up by its sign-in email, so an existing member can be made an admin. */
+  async findAccountByEmail(email: string): Promise<AdminUser | null> { const u = DEMO_USERS.find(u => u.email?.toLowerCase() === email.toLowerCase()); return u ? { id: u.id, name: u.name, email: u.email } : null },
   async moderate(table: 'reviews' | 'listings' | 'wishes' | 'events' | 'places', rowId: string, status: string) {
     const row = (db()[table] as { id: string; status: string }[]).find(r => r.id === rowId); if (row) row.status = status
   },

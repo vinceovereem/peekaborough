@@ -1,6 +1,7 @@
 import CartoonMap from '@/components/CartoonMap'
 import { Flash } from '@/components/ui'
-import { APP_NAME, HOOD, DEMO } from '@/lib/config'
+import Footer from '@/components/Footer'
+import { APP_NAME, HOOD, DEMO, SITE_URL } from '@/lib/config'
 import { DEMO_USERS } from '@/data/demo'
 import { demoSignIn, googleSignIn } from './actions'
 
@@ -12,16 +13,22 @@ const FEATURES = [
   ['💡', 'Say what the area needs', 'and vote — so the council and new businesses can see it'],
 ] as const
 
+// This page is also what signed-out visitors (and search engines) get at the site's front door, "/".
+export const metadata = { alternates: { canonical: '/' } }
+const STRUCTURED = { '@context': 'https://schema.org', '@type': 'WebSite', name: APP_NAME, url: SITE_URL, description: `A free neighbourhood guide to the London Borough of ${HOOD.name}: places, events, local news and what the area needs.`, inLanguage: 'en-GB', about: { '@type': 'AdministrativeArea', name: `London Borough of ${HOOD.name}` } }
+
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams
   return (
     <main className="relative min-h-dvh">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED) }} />
       <div className="fixed inset-0"><CartoonMap hero /></div>
       <div className="relative mx-auto flex min-h-dvh max-w-6xl items-center px-3 py-8 sm:px-6">
         <section className="card w-full max-w-lg p-6 sm:p-8">
           <p className="chip bg-sun">🏘️ {HOOD.name}</p>
           <h1 className="mt-3 text-4xl leading-[1.05] font-bold sm:text-5xl">{APP_NAME}</h1>
           <p className="mt-2 text-xl font-bold">Your neighbourhood, drawn to life.</p>
+          <p className="muted mt-1">A free guide to the London Borough of {HOOD.name}, made with and for the people who live here.</p>
           <ul className="mt-5 space-y-2">
             {FEATURES.map(([emoji, title, rest]) => (
               <li key={title} className="flex gap-3"><span aria-hidden className="text-xl">{emoji}</span><span><b>{title}</b> <span className="muted">{rest}</span></span></li>
@@ -50,6 +57,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <p className="muted mt-3 text-xs">One tap, no new password. Businesses use the same sign-in, then claim their place.</p>
             </form>
           )}
+          <Footer inCard />
         </section>
       </div>
     </main>

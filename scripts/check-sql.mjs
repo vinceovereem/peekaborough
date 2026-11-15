@@ -94,4 +94,18 @@ await denied(null, `select 1 from public.places_view where id = '${other}'`, 'hi
 await allowed(null, `select 1 from public.places_view where id = '${place}'`, 'anon can still read the rest once something is hidden')
 await denied(null, `select 1 from public.place_owners`, 'anon sees no ownership rows')
 
-console.log('✔ migration + seed apply cleanly; 43 access rules hold')
+// --- favourites and admin applications (second migration) ---
+await allowed(A, `insert into public.favorites (user_id, place_id) values ('${A}', '${place}') returning place_id`, 'save a favourite')
+await denied(A, `insert into public.favorites (user_id, place_id) values ('${B}', '${place}')`, 'save a favourite for someone else')
+await denied(B, `select 1 from public.favorites`, "see someone else's favourites")
+await denied(null, `select 1 from public.favorites`, 'anon cannot read favourites')
+await allowed(A, `delete from public.favorites where user_id = '${A}' returning place_id`, 'remove a favourite')
+const APPLY = `(user_id, full_name, email, phone, address, years_in_area, occupation, favourite_thing)`
+await allowed(B, `insert into public.admin_applications ${APPLY} values ('${B}', 'Bob', 'bob@example.com', '07000 000000', '1 Test Street', 4, 'Baker', 'The parks') returning id`, 'apply to be an admin')
+await denied(B, `insert into public.admin_applications ${APPLY} values ('${B}', 'Bob', 'bob@example.com', '07000 000000', '1 Test Street', 4, 'Baker', 'again')`, 'second pending application')
+await denied(A, `insert into public.admin_applications (user_id, full_name, email, phone, address, years_in_area, occupation, favourite_thing, status) values ('${A}', 'Alice', 'a@example.com', '07000 000000', '1 Test Street', 4, 'Baker', 'x', 'approved')`, 'self-approve an application')
+await denied(A, `select 1 from public.admin_applications`, "read someone else's application (phone, address)")
+await denied(null, `select 1 from public.admin_applications`, 'anon cannot read applications')
+await denied(B, `update public.admin_applications set status = 'approved' where user_id = '${B}'`, 'approve your own application')
+
+console.log('✔ migrations + seed apply cleanly; 54 access rules hold')

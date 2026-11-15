@@ -25,6 +25,10 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   // .ics feeds are fetched by calendar apps (published events only); the sync endpoint checks its own secret
   if (pathname === '/calendar' || pathname === '/api/sync') return response
+  // Readable by anyone, signed in or not: the legal pages and the files search engines ask for.
+  if (['/privacy', '/terms', '/security', '/robots.txt', '/sitemap.xml'].includes(pathname)) return response
+  // Signed-out visitors (and search engines) get the front page at the site's own address, not a redirect.
+  if (!signedIn && pathname === '/') return NextResponse.rewrite(new URL('/login', request.url))
   const isPublic = pathname === '/login' || pathname.startsWith('/auth/')
   if (signedIn === isPublic && pathname !== '/auth/callback') {
     const url = request.nextUrl.clone()
