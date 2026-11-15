@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { APP_NAME, HOOD, DEMO } from '@/lib/config'
 import type { User } from '@/lib/types'
+import { Logo } from './ui'
 import { signOut } from '@/app/login/actions'
 
 const LINKS = [['/', '🗺️', 'Map'], ['/events', '🎟️', "What's on"], ['/news', '📰', 'News'], ['/trade', '🔁', 'Trade'], ['/needs', '💡', 'Needs']] as const
@@ -10,7 +11,7 @@ export default function Nav({ user, floating }: { user: User; floating?: boolean
     <header className={floating ? 'pointer-events-none absolute inset-x-0 top-0 z-20 p-2 sm:p-3' : 'sticky top-0 z-20 p-2 sm:p-3'}>
       <div className="card pointer-events-auto mx-auto flex max-w-6xl items-center gap-2 px-3 py-2">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl border-2 border-ink bg-sun text-lg shadow-pop-sm">🏘️</span>
+          <Logo />
           <span className="hidden leading-none sm:block">
             <span className="font-display block text-lg font-bold">{APP_NAME}</span>
             <span className="muted text-xs font-bold">{HOOD.name}</span>

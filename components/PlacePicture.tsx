@@ -32,7 +32,7 @@ export function Doodle({ place, className }: { place: P; className?: string }) {
       {[0, 2, 4, 6].map(i => <path key={i} d={`M${78 + i * 30.5} 84L${78 + (i + 1) * 30.5} 84L${66 + (i + 1) * 33.5} 106L${66 + i * 33.5} 106Z`} fill={c.color} stroke={INK} strokeWidth="2" />)}
       <rect x={doorLeft ? 92 : 268} y="114" width="40" height="58" rx="3" fill="#7a5a44" stroke={INK} strokeWidth="3" /><circle cx={doorLeft ? 124 : 276} cy="145" r="2.5" fill="#ffd23f" />
       <rect x={doorLeft ? 146 : 92} y="114" width="162" height="46" rx="3" fill="#cfeeff" stroke={INK} strokeWidth="3" />
-      <text x={doorLeft ? 227 : 173} y="151" textAnchor="middle" fontSize="34">{c.emoji}</text>
+      <image href={`/icons/${place.category}.webp`} x={(doorLeft ? 227 : 173) - 20} y="117" width="40" height="40" />
     </svg>
   )
 }

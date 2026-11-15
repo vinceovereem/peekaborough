@@ -18,17 +18,27 @@ type Props = {
   hero?: boolean
 }
 
-/** Draws a cartoon map pin (coloured blob, ink outline, emoji) to use as a symbol icon. */
-function pinImage(emoji: string, colour: string) {
-  const s = 80, h = 98, c = document.createElement('canvas')
+const PIN_SCALE = 4 // pins are drawn at 4x so the biggest (the selected place) stays sharp on phone screens
+const loadIcon = (key: string) => new Promise<HTMLImageElement | null>(done => {
+  const i = new Image()
+  i.onload = () => done(i); i.onerror = () => done(null) // no picture: the pin falls back to the emoji
+  i.src = `/icons/${key}.webp`
+})
+
+/** Draws a cartoon map pin (clay badge with an ink outline and pointer) to use as a symbol icon. */
+function pinImage(icon: HTMLImageElement | null, emoji: string, colour: string) {
+  const s = 160, h = 196, c = document.createElement('canvas')
   c.width = s; c.height = h
-  const x = c.getContext('2d')!, r = s / 2 - 5
+  const x = c.getContext('2d')!, r = s / 2 - 8
   x.fillStyle = INK
-  x.beginPath(); x.moveTo(s / 2 - r * 0.6, s / 2 + r * 0.7); x.lineTo(s / 2, h - 2); x.lineTo(s / 2 + r * 0.6, s / 2 + r * 0.7); x.fill()
+  x.beginPath(); x.moveTo(s / 2 - r * 0.6, s / 2 + r * 0.7); x.lineTo(s / 2, h - 4); x.lineTo(s / 2 + r * 0.6, s / 2 + r * 0.7); x.fill()
   x.beginPath(); x.arc(s / 2, s / 2, r, 0, Math.PI * 2); x.fillStyle = colour; x.fill()
-  x.lineWidth = 5; x.strokeStyle = INK; x.stroke()
-  x.font = '38px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
-  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(emoji, s / 2, s / 2 + 3)
+  if (icon) x.drawImage(icon, s / 2 - r, s / 2 - r, r * 2, r * 2)
+  else {
+    x.font = '76px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(emoji, s / 2, s / 2 + 6)
+  }
+  x.lineWidth = 8; x.strokeStyle = INK; x.stroke()
   return x.getImageData(0, 0, s, h)
 }
 
@@ -115,6 +125,7 @@ export default function CartoonMap({ places, pins, selected, onPlace, onPin, her
 
   useEffect(() => {
     let dead = false, spin = 0
+    const icons = hero ? null : Promise.all(CATEGORY_KEYS.map(loadIcon))
     import('maplibre-gl').then(ml => {
       if (dead || !el.current) return
       lib.current = ml
@@ -150,7 +161,8 @@ export default function CartoonMap({ places, pins, selected, onPlace, onPin, her
       }, 'bottom-right')
       m.addControl(new ml.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'bottom-right')
       m.on('load', () => {
-        for (const key of CATEGORY_KEYS) m.addImage(`pin-${key}`, pinImage(CATEGORIES[key].emoji, CATEGORIES[key].color), { pixelRatio: 2 })
+        // the layers below name these images before they exist; MapLibre draws the pins as each one arrives
+        icons?.then(loaded => { if (!dead) CATEGORY_KEYS.forEach((key, i) => m.addImage(`pin-${key}`, pinImage(loaded[i], CATEGORIES[key].emoji, CATEGORIES[key].color), { pixelRatio: PIN_SCALE })) })
         m.addSource('places', { type: 'geojson', data: toGeoJSON(latest.current.places ?? []) })
         const text = { 'text-font': ['Noto Sans Bold'], 'text-anchor': 'top' as const, 'text-offset': [0, 0.15] as [number, number], 'text-max-width': 8, 'text-optional': true }
         const paint = { 'text-color': INK, 'text-halo-color': '#fff8ea', 'text-halo-width': 2 }

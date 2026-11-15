@@ -1,5 +1,5 @@
 import CartoonMap from '@/components/CartoonMap'
-import { Flash } from '@/components/ui'
+import { Flash, Logo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import { APP_NAME, HOOD, DEMO, SITE_URL } from '@/lib/config'
 import { DEMO_USERS } from '@/data/demo'
@@ -25,7 +25,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="fixed inset-0"><CartoonMap hero /></div>
       <div className="relative mx-auto flex min-h-dvh max-w-6xl items-center px-3 py-8 sm:px-6">
         <section className="card w-full max-w-lg p-6 sm:p-8">
-          <p className="chip bg-sun">🏘️ {HOOD.name}</p>
+          <Logo className="size-20" />
+          <p className="chip bg-sun mt-3">{HOOD.name}</p>
           <h1 className="mt-3 text-4xl leading-[1.05] font-bold sm:text-5xl">{APP_NAME}</h1>
           <p className="mt-2 text-xl font-bold">Your neighbourhood, drawn to life.</p>
           <p className="muted mt-1">A free guide to the London Borough of {HOOD.name}, made with and for the people who live here.</p>

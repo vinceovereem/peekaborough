@@ -4,7 +4,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react'
 import CartoonMap, { type MapPin } from './CartoonMap'
 import PlacePicture from './PlacePicture'
 import AskPanel from './AskPanel'
-import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills } from './ui'
+import { Stars, CategoryIcon, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills } from './ui'
 import { CATEGORIES, CATEGORY_KEYS, EVENT_KINDS, type Category } from '@/lib/config'
 import { isOpenNow, formatDay, formatTime, formatPrice, dayKey } from '@/lib/hours'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
@@ -87,7 +87,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
                 <ul className="card absolute inset-x-0 top-full mt-1 overflow-hidden">
                   {suggestions.map(p => (
                     <li key={p.id}><button onClick={() => pickPlace(p.id)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-sun/40">
-                      <span aria-hidden>{CATEGORIES[p.category].emoji}</span><b className="truncate">{p.name}</b><span className="muted truncate text-sm">{p.address}</span>
+                      <CategoryIcon category={p.category} className="size-6" /><b className="truncate">{p.name}</b><span className="muted truncate text-sm">{p.address}</span>
                     </button></li>
                   ))}
                 </ul>
@@ -104,7 +104,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
             <button onClick={() => setOutside(!outside)} aria-pressed={outside} className={`chip shadow-pop-sm ${outside ? 'bg-sun' : ''}`}>☀️ Sit outside</button>
             {CATEGORY_KEYS.map(k => (
               <button key={k} onClick={() => setCat(cat === k ? null : k)} aria-pressed={cat === k} className="chip shadow-pop-sm" style={cat === k ? { background: CATEGORIES[k].color } : undefined}>
-                {CATEGORIES[k].emoji} {CATEGORIES[k].label}
+                <CategoryIcon category={k} className="size-6 -ml-1.5" /> {CATEGORIES[k].label}
               </button>
             ))}
           </div>}
@@ -133,7 +133,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
           <ul className="space-y-1.5">
             {posts.map(p => (
               <li key={p.id}><Link href={`/place/${p.place!.slug}`} className="block rounded-xl p-1.5 hover:bg-sun/40">
-                <b className="block truncate">{CATEGORIES[p.place!.category].emoji} {p.title}</b><span className="muted text-sm">{p.place!.name}</span>
+                <b className="block truncate"><CategoryIcon category={p.place!.category} /> {p.title}</b><span className="muted text-sm">{p.place!.name}</span>
               </Link></li>
             ))}
           </ul>
@@ -143,7 +143,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
           <ul className="space-y-1.5">
             {topRated.map(p => (
               <li key={p.id}><button onClick={() => pickPlace(p.id)} className="block w-full rounded-xl p-1.5 text-left hover:bg-sun/40">
-                <b className="block truncate">{CATEGORIES[p.category].emoji} {p.name}</b><Stars rating={p.rating} count={p.review_count} />
+                <b className="block truncate"><CategoryIcon category={p.category} /> {p.name}</b><Stars rating={p.rating} count={p.review_count} />
               </button></li>
             ))}
           </ul>
