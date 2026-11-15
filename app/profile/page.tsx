@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import { Stars, CategoryTag, Empty } from '@/components/ui'
-import { requireUser } from '@/lib/auth'
+import { requireVisitor } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { LISTING_KINDS } from '@/lib/config'
 import { formatDay } from '@/lib/hours'
@@ -11,7 +11,23 @@ import { saveProfile } from '@/app/actions'
 export const metadata = { title: 'My profile' }
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, flash] = await Promise.all([requireUser(), searchParams])
+  const [user, flash] = await Promise.all([requireVisitor(), searchParams])
+  if (!user) return (
+    <Shell title="My profile">
+      <section className="card mt-4 max-w-xl p-6">
+        <h2 className="text-2xl font-bold">You&apos;re looking around without an account</h2>
+        <p className="mt-2">That&apos;s fine — the map, what&apos;s on, the news and what the area needs are all open to read. Sign in when you want to:</p>
+        <ul className="my-3 ml-5 list-disc space-y-1">
+          <li>review and rate places, and save your favourites</li>
+          <li>add ideas to Needs and vote on them</li>
+          <li>see and post Trade listings</li>
+          <li>claim and run your business page</li>
+        </ul>
+        <Link href="/login" className="btn">Sign in with Google</Link>
+        <p className="muted mt-3 text-sm">One tap, no new password.</p>
+      </section>
+    </Shell>
+  )
   const [favourites, reviews, listings, application] = await Promise.all([repo.myFavorites(user.id), repo.myReviews(user.id), repo.listings(user.id), repo.myApplication(user.id)])
   const mine = listings.filter(l => l.user_id === user.id)
   return (

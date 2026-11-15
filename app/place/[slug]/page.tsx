@@ -4,8 +4,8 @@ import type { Metadata } from 'next'
 import Nav from '@/components/Nav'
 import PlacePicture from '@/components/PlacePicture'
 import SubmitButton from '@/components/SubmitButton'
-import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills, Flash, Empty } from '@/components/ui'
-import { requireUser } from '@/lib/auth'
+import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills, Flash, Empty, SignInPrompt } from '@/components/ui'
+import { requireVisitor } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { googlePlace } from '@/lib/google'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
@@ -26,16 +26,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const GoogleMapsCredit = () => <span style={{ fontFamily: 'Roboto, Arial, sans-serif', fontWeight: 400, color: '#5e5e5e', whiteSpace: 'nowrap' }}>Google Maps</span>
 
 export default async function PlacePage({ params, searchParams }: Props) {
-  const [user, { slug }, flash] = await Promise.all([requireUser(), params, searchParams])
+  const [user, { slug }, flash] = await Promise.all([requireVisitor(), params, searchParams]) // null: looking around without an account
   const place = await repo.place(slug)
-  if (!place || (place.status === 'hidden' && !user.is_admin)) notFound()
+  if (!place || (place.status === 'hidden' && !user?.is_admin)) notFound()
   const lines = place.extra.lines
   const [menu, posts, events, reviews, isOwner, favourites, google, status] = await Promise.all([
-    repo.menu(place.id), repo.posts(place.id), repo.events(place.id), repo.reviews(place.id, user.id), repo.isOwner(user.id, place.id), repo.favoriteIds(user.id),
-    googlePlace(place), lines ? lineStatus(lines.map(l => l.id)) : undefined,
+    repo.menu(place.id), repo.posts(place.id), repo.events(place.id), repo.reviews(place.id, user?.id ?? null), user ? repo.isOwner(user.id, place.id) : false, user ? repo.favoriteIds(user.id) : ([] as string[]),
+    user ? googlePlace(place) : null, // each Google lookup is paid for, so it is kept for signed-in neighbours
+    lines ? lineStatus(lines.map(l => l.id)) : undefined,
   ])
   const now = new Date(), today = londonNow(now).day
-  const mine = reviews.find(r => r.user_id === user.id)
+  const mine = user && reviews.find(r => r.user_id === user.id)
   const sections = [...new Set(menu.map(m => m.section))]
   const host = place.website?.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '')
   const linked = { ...place, google_place_id: google?.id ?? place.google_place_id }
@@ -72,8 +73,8 @@ export default async function PlacePage({ params, searchParams }: Props) {
             </div>
             {lines && <div className="mt-3"><LinePills lines={lines} status={status} /></div>}
             <div className="mt-4 flex flex-wrap gap-2">
-              <form action={toggleFavorite}><input type="hidden" name="place_id" value={place.id} /><input type="hidden" name="slug" value={place.slug} /><input type="hidden" name="_from" value={`/place/${place.slug}`} />
-                <button className={`btn ${isFavourite ? 'bg-bubble' : 'btn-white'}`} aria-pressed={isFavourite}>{isFavourite ? '♥ In your favourites' : '♡ Add to favourites'}</button></form>
+              {!user ? <Link href="/login" className="btn btn-white">♡ Sign in to save</Link> : <form action={toggleFavorite}><input type="hidden" name="place_id" value={place.id} /><input type="hidden" name="slug" value={place.slug} /><input type="hidden" name="_from" value={`/place/${place.slug}`} />
+                <button className={`btn ${isFavourite ? 'bg-bubble' : 'btn-white'}`} aria-pressed={isFavourite}>{isFavourite ? '♥ In your favourites' : '♡ Add to favourites'}</button></form>}
               {place.booking_url && <a href={place.booking_url} target="_blank" rel="noreferrer nofollow" className="btn bg-grass">📅 Book</a>}
               <Link href={`/?place=${place.slug}`} className="btn">🗺️ Show on map</Link>
               <a href={directionsUrl(linked)} target="_blank" rel="noreferrer" className="btn btn-white">🧭 Directions</a>
@@ -131,7 +132,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
 
             <section id="reviews">
               <h2 className="mb-2 text-2xl font-bold">⭐ What neighbours say</h2>
-              <form action={addReview} className="card mb-4 space-y-3 p-4">
+              {!user ? <div className="mb-4"><SignInPrompt>Sign in to rate and review this place, and to see its Google rating, photos and opening hours here.</SignInPrompt></div> : <form action={addReview} className="card mb-4 space-y-3 p-4">
                 <input type="hidden" name="place_id" value={place.id} /><input type="hidden" name="slug" value={place.slug} /><input type="hidden" name="_from" value={`/place/${place.slug}`} />
                 <fieldset>
                   <legend className="label">{mine ? 'Update your rating' : 'Your rating'}</legend>
@@ -142,13 +143,13 @@ export default async function PlacePage({ params, searchParams }: Props) {
                 <div><label className="label" htmlFor="comment">Anything to add? <span className="muted font-normal">(optional)</span></label>
                   <textarea id="comment" name="comment" rows={2} maxLength={1000} defaultValue={mine?.comment ?? ''} className="input" placeholder="What should a neighbour know?" /></div>
                 <SubmitButton>{mine ? 'Update review' : 'Post review'}</SubmitButton>
-              </form>
-              {reviews.length === 0 ? <Empty>No neighbour reviews yet — be the first.</Empty> : (
+              </form>}
+              {reviews.length === 0 ? <Empty>No neighbour reviews yet{user ? ' — be the first.' : '.'}</Empty> : (
                 <ul className="space-y-3">{reviews.map(r => (
                   <li key={r.id} className="card p-4">
                     <div className="flex flex-wrap items-center gap-2"><b>{r.author}</b><Stars rating={r.rating} /><span className="muted text-sm">{formatDay(r.created_at)}</span>
                       {r.status === 'hidden' && <span className="tag bg-ink/10">Hidden by a moderator</span>}
-                      {user.is_admin && r.status === 'visible' && <form action={moderate} className="ml-auto"><input type="hidden" name="table" value="reviews" /><input type="hidden" name="id" value={r.id} /><button name="status" value="hidden" className="btn btn-white btn-sm">Hide</button></form>}
+                      {user?.is_admin && r.status === 'visible' && <form action={moderate} className="ml-auto"><input type="hidden" name="table" value="reviews" /><input type="hidden" name="id" value={r.id} /><button name="status" value="hidden" className="btn btn-white btn-sm">Hide</button></form>}
                     </div>
                     {r.comment && <p className="mt-1">{r.comment}</p>}
                   </li>
@@ -204,7 +205,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
               </section>
             )}
             {place.osm_id && <p className="muted text-xs">Basic details from <a className="underline" href={`https://www.openstreetmap.org/${place.osm_id}`} target="_blank" rel="noreferrer">OpenStreetMap</a> contributors{place.verified ? ', updated by the owner' : ''}. Spot a mistake? The owner can fix it by claiming the page.</p>}
-            {user.is_admin && (
+            {user?.is_admin && (
               <form action={moderate} className="card p-4"><input type="hidden" name="table" value="places" /><input type="hidden" name="id" value={place.id} />
                 <p className="label">Admin</p>
                 <button name="status" value={place.status === 'hidden' ? 'published' : 'hidden'} className="btn btn-white btn-sm">{place.status === 'hidden' ? 'Put back on the map' : 'Hide from the map'}</button>

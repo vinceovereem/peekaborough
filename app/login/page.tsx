@@ -1,9 +1,9 @@
 import CartoonMap from '@/components/CartoonMap'
 import { Flash, Logo } from '@/components/ui'
 import Footer from '@/components/Footer'
-import { APP_NAME, HOOD, DEMO, SITE_URL } from '@/lib/config'
+import { APP_NAME, HOOD, DEMO, TEST_ACCOUNTS, SITE_URL } from '@/lib/config'
 import { DEMO_USERS } from '@/data/demo'
-import { demoSignIn, googleSignIn } from './actions'
+import { demoSignIn, googleSignIn, skipSignIn } from './actions'
 
 const FEATURES = [
   ['🗺️', 'Every shop, café and pub', 'on a 3D map you actually want to play with'],
@@ -36,28 +36,20 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             ))}
           </ul>
           <div className="mt-6"><Flash error={error} /></div>
-          {DEMO ? (
-            <div>
-              <p className="mb-2 font-bold">Preview — step in as a guest:</p>
-              <form action={demoSignIn} className="grid gap-2 sm:grid-cols-3">
-                {DEMO_USERS.map((u, i) => (
-                  <button key={u.key} name="as" value={u.key} className={`btn h-auto flex-col !items-start !gap-0 text-left ${['bg-sun', 'bg-grass', 'bg-sky'][i]}`}>
-                    <span>{['🙋', '🧑‍🍳', '🛠️'][i]} {['Resident', 'Business', 'Admin'][i]}</span>
-                    <span className="font-sans text-xs font-normal">{u.blurb}</span>
-                  </button>
-                ))}
-              </form>
-              <p className="muted mt-3 text-xs">This is a preview. The places and events are real; anything you add as a guest is temporary. Sign-in with Google is coming.</p>
-            </div>
-          ) : (
-            <form action={googleSignIn}>
+          <form action={googleSignIn}>
               <button className="btn btn-white w-full text-lg">
                 <svg viewBox="0 0 48 48" className="size-5" aria-hidden><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.2 5.6c4.2-3.9 7.1-9.6 7.1-17.1z"/><path fill="#FBBC05" d="M10.5 28.6a14.5 14.5 0 0 1 0-9.2l-7.9-6.2a24 24 0 0 0 0 21.6l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.200-5.600c-2.200 1.500-5 2.300-8.700 2.300-6.300 0-11.600-4.200-13.500-9.900l-7.900 6.200C6.500 42.600 14.600 48 24 48z"/></svg>
                 Continue with Google
               </button>
-              <p className="muted mt-3 text-xs">One tap, no new password. Businesses use the same sign-in, then claim their place.</p>
-            </form>
-          )}
+          </form>
+          {/* reading needs no account; reviewing, voting, trading and running a business page do */}
+          <form action={skipSignIn}><button className="mt-2 w-full py-3 font-bold underline">Skip for now — just look around</button></form>
+          <p className="muted mt-2 text-xs">Sign in with Google to review, vote, trade, save favourites or run your business page — one tap, no new password. Skip and you can still look at everything, and sign in later from My profile.{DEMO && ' (Google sign-in is not connected on this preview copy.)'}</p>
+          {TEST_ACCOUNTS && <details className="mt-4 rounded-xl border-2 border-dashed border-ink/30 p-3 text-sm">
+            <summary className="cursor-pointer font-bold">Testing tools — this computer only, never on the live site</summary>
+            <p className="muted my-2">Stand-in accounts for trying signed-in features without a database. Anything they add is temporary.</p>
+            <form action={demoSignIn} className="flex flex-wrap gap-2">{DEMO_USERS.map((u, i) => <button key={u.key} name="as" value={u.key} className="btn btn-white btn-sm">{['Test resident', 'Test business owner', 'Test admin'][i]}</button>)}</form>
+          </details>}
           <Footer inCard />
         </section>
       </div>

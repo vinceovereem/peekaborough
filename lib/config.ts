@@ -73,3 +73,5 @@ export const ADMIN_CALL_URL = 'https://calendar.app.google/B39DmXdXRpv8ZZzt8'
 
 // Demo mode = no Supabase keys: data lives in memory, sign-in is one click. See README.
 export const DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL
+/** Stand-in accounts for trying signed-in features without a database. Only ever on a developer's own machine. */
+export const TEST_ACCOUNTS = DEMO && process.env.NODE_ENV === 'development'

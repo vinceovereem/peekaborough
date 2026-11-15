@@ -20,7 +20,7 @@ function Rich({ text }: { text: string }) {
   })}</>
 }
 
-export default function AskPanel({ enabled, onClose }: { enabled: boolean; onClose: () => void }) {
+export default function AskPanel({ enabled, signedIn, onClose }: { enabled: boolean; signedIn: boolean; onClose: () => void }) {
   const [turns, setTurns] = useState<Turn[]>([])
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,6 +52,10 @@ export default function AskPanel({ enabled, onClose }: { enabled: boolean; onClo
           <p className="text-4xl" aria-hidden>🛠️</p>
           <p className="font-display mt-1 text-xl font-bold">Coming soon</p>
           <p className="muted mt-1">Soon you&apos;ll be able to ask things like “{STARTERS[0]}” and get an answer from what&apos;s on the map. For now, try 🔥 What&apos;s popping or the search.</p>
+        </div> : !signedIn ? <div className="py-4 text-center">
+          <p className="font-display text-xl font-bold">Sign in to ask</p>
+          <p className="muted mt-1 mb-3">The local guide answers signed-in neighbours. It takes one tap with Google.</p>
+          <Link href="/login" className="btn">Sign in with Google</Link>
         </div> : turns.length === 0 && <>
           <p className="muted">Ask me anything about the area — I answer from what&apos;s on the map, the events diary and local news.</p>
           <div className="flex flex-wrap gap-1.5">{STARTERS.map(s => <button key={s} onClick={() => send(s)} className="chip text-left whitespace-normal">{s}</button>)}</div>
@@ -62,7 +66,7 @@ export default function AskPanel({ enabled, onClose }: { enabled: boolean; onClo
         {busy && <p className="muted mr-4 animate-pulse rounded-2xl border-2 border-dashed border-ink/40 px-3 py-2">Having a look around…</p>}
         <div ref={end} />
       </div>
-      {enabled && <><form onSubmit={e => { e.preventDefault(); send(draft) }} className="flex gap-2 border-t-2 border-ink p-3">
+      {enabled && signedIn && <><form onSubmit={e => { e.preventDefault(); send(draft) }} className="flex gap-2 border-t-2 border-ink p-3">
         <input value={draft} onChange={e => setDraft(e.target.value)} maxLength={500} placeholder="Where's good for…?" aria-label="Your question" className="input" />
         <button className="btn" disabled={busy || !draft.trim()}>Ask</button>
       </form>

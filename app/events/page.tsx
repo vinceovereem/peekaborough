@@ -2,7 +2,8 @@ import Link from 'next/link'
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import CalendarPicker from '@/components/CalendarPicker'
-import { SampleTag, Empty } from '@/components/ui'
+import { SampleTag, Empty, SignInPrompt } from '@/components/ui'
+import { requireVisitor } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, HOOD, type EventKind } from '@/lib/config'
 import { formatDay, formatTime, formatPrice, dayKey } from '@/lib/hours'
@@ -15,7 +16,7 @@ export const metadata = { title: "What's on" }
 const KINDS = Object.keys(EVENT_KINDS) as EventKind[]
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; ok?: string; error?: string }> }) {
-  const { kinds = '', ...flash } = await searchParams
+  const [user, { kinds = '', ...flash }] = await Promise.all([requireVisitor(), searchParams])
   const picked = KINDS.filter(k => kinds.split(',').includes(k)) // several can be on at once
   const toggled = (k: EventKind) => { const next = picked.includes(k) ? picked.filter(x => x !== k) : [...picked, k]; return next.length ? `/events?kinds=${next.join(',')}` : '/events' }
   const all = await repo.events()
@@ -66,7 +67,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         ))}</div>
       )}
 
-      <details className="card mt-10 p-4">
+      {!user ? <div className="mt-10"><SignInPrompt>Know about something happening? Sign in to suggest it.</SignInPrompt></div> : <details className="card mt-10 p-4">
         <summary className="font-display cursor-pointer text-xl font-bold">➕ Know about something happening? Suggest it</summary>
         <form action={suggestEvent} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input type="hidden" name="_from" value="/events" />
@@ -80,7 +81,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           <div className="sm:col-span-2"><label className="label" htmlFor="url">Link <span className="muted font-normal">(optional)</span></label><input id="url" name="url" type="url" className="input" placeholder="https://" /></div>
           <div className="sm:col-span-2"><SubmitButton>Send for approval</SubmitButton> <span className="muted ml-2 text-sm">We check every suggestion before it appears.</span></div>
         </form>
-      </details>
+      </details>}
       <p className="muted mt-6 text-xs">Fixtures: openfootball. Kick-off times can change for TV — check arsenal.com before you travel.</p>
     </Shell>
   )

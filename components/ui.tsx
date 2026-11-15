@@ -56,6 +56,16 @@ export function Flash({ ok, error }: { ok?: string; error?: string }) {
   return <p role="status" className={`card mb-5 px-4 py-3 font-bold ${error ? 'bg-tomato text-white' : 'bg-grass'}`}>{error ?? ok}</p>
 }
 
+/** Stands where a signed-in neighbour gets a form or a button, for someone who is only looking around. */
+export function SignInPrompt({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 border-dashed bg-sky/30 p-4">
+      <p className="min-w-48 flex-1 font-bold">{children}</p>
+      <Link href="/login" className="btn btn-sm">Sign in with Google</Link>
+    </div>
+  )
+}
+
 export function Empty({ children }: { children: React.ReactNode }) {
   return <p className="muted rounded-2xl border-2 border-dashed border-ink/30 p-6 text-center">{children}</p>
 }

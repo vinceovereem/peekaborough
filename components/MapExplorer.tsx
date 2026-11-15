@@ -10,7 +10,7 @@ import { isOpenNow, formatDay, formatTime, formatPrice, dayKey } from '@/lib/hou
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
 import type { MapPlace, Event, Post } from '@/lib/types'
 
-type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; favourites: string[]; initialSlug?: string; now: string; askEnabled: boolean }
+type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; favourites: string[]; initialSlug?: string; now: string; askEnabled: boolean; signedIn: boolean }
 const venueKey = (e: Event) => `${e.lat.toFixed(4)},${e.lng.toFixed(4)}`
 
 const NO_PINS: MapPin[] = []
@@ -19,7 +19,7 @@ const readHideEvents = () => { try { return localStorage.getItem('hide-events') 
 // The server leaves empty fields out to keep the list small; put the defaults back.
 const BLANK = { subcategory: null, address: null, hours: null, cover_url: null, extra: {}, is_landmark: false, is_demo: false, verified: false, rating: null, review_count: 0 }
 
-export default function MapExplorer({ places: slim, events, posts, favourites, initialSlug, now: nowISO, askEnabled }: Props) {
+export default function MapExplorer({ places: slim, events, posts, favourites, initialSlug, now: nowISO, askEnabled, signedIn }: Props) {
   const now = useMemo(() => new Date(nowISO), [nowISO])
   const places = useMemo(() => slim.map(p => ({ ...BLANK, ...p })), [slim])
   const [cat, setCat] = useState<Category | null>(null)
@@ -152,7 +152,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
 
       {/* the local guide: one button, bottom-left, out of the way of everything else */}
       {!asking && !place && !venueEvents && <button onClick={() => setAsking(true)} className="btn absolute bottom-8 left-2 z-10 sm:left-3">✨ Ask</button>}
-      {asking && <AskPanel enabled={askEnabled} onClose={() => setAsking(false)} />}
+      {asking && <AskPanel enabled={askEnabled} signedIn={signedIn} onClose={() => setAsking(false)} />}
 
       {/* selected place / venue */}
       {(place || venueEvents) && (
