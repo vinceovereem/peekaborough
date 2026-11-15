@@ -67,7 +67,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
             {place.address && <p className="muted mt-1 text-lg">{place.address}</p>}
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
               <Stars rating={place.rating} count={place.review_count} />
-              {google?.rating != null && <a href={mapsUrl} target="_blank" rel="noreferrer" className="text-sm"><b className="text-amber-500">★</b> <b>{google.rating.toFixed(1)}</b> <span className="muted">({google.userRatingCount?.toLocaleString()}) on</span> <GoogleMapsCredit /></a>}
+              {google?.rating != null && <a href={mapsUrl} target="_blank" rel="noreferrer" className="text-sm" title={google.displayName ? `Google Maps listing: ${google.displayName.text}` : undefined}><b className="text-amber-500">★</b> <b>{google.rating.toFixed(1)}</b> <span className="muted">({google.userRatingCount?.toLocaleString()}) on</span> <GoogleMapsCredit /></a>}
             </div>
             {lines && <div className="mt-3"><LinePills lines={lines} status={status} /></div>}
             <div className="mt-4 flex flex-wrap gap-2">
