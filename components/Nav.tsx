@@ -19,8 +19,8 @@ export default function Nav({ user, floating }: { user: User | null; floating?: 
           </span>
         </Link>
         <nav className="flex flex-1 gap-1 overflow-x-auto px-1 [scrollbar-width:none]">
-          {/* residents get a profile; people with a verified business page get their dashboard */}
-          {[...LINKS, user?.is_owner ? ['/business', '🏪', 'My business'] as const : ['/profile', '👤', 'My profile'] as const].map(([href, emoji, label]) => (
+          {/* people with a verified business page also get the place they manage it from */}
+          {[...LINKS, ...(user?.is_owner ? [['/business', '🏪', 'My businesses'] as const] : []), ['/profile', '👤', 'My profile'] as const].map(([href, emoji, label]) => (
             <Link key={href} href={href} className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-bold whitespace-nowrap hover:bg-sun/50">
               <span aria-hidden>{emoji}</span> {label}
             </Link>
