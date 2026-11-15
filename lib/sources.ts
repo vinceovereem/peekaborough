@@ -17,8 +17,9 @@ const get = async (url: string) => {
   return res.json()
 }
 const pence = (v: unknown) => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(n) ? Math.round(n * 100) : null }
-// ponytail: each source is read soonest-first, at most MAX_PAGES pages. Both search circles reach into central
-// London, so on a busy month the far-off dates get cut; search smaller circles or by venue if that bites.
+// ponytail: each source is read soonest-first, a fixed number of pages. The search circles reach into central London,
+// where about 50 events a day are listed: Skiddle's 30 pages of 100 cover roughly two months (the first live run,
+// at 5 pages, reached 10 days). Ticketmaster lets nobody page past 1,000. Search by venue if either bites.
 const MAX_PAGES = 5
 const clip = (s: unknown, max: number) => typeof s === 'string' && s.trim() ? s.trim().replace(/<[^>]+>/g, '').slice(0, max) : null
 
@@ -27,7 +28,7 @@ const SKIDDLE_KINDS: Record<string, EventKind> = { FEST: 'music', LIVE: 'music',
 /** https://github.com/Skiddle/web-api — free key from skiddle.com/api/join.php. Radius is in miles. */
 async function skiddle(key: string): Promise<ExternalEvent[]> {
   const found: any[] = []
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 0; page < 30; page++) {
     const batch = (await get(`https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100&offset=${page * 100}`)).results ?? []
     found.push(...batch)
     if (batch.length < 100) break
