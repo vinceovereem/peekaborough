@@ -24,16 +24,24 @@ export type GooglePlace = {
 const call = (path: string, mask: string, init?: RequestInit) =>
   fetch(`${API}/${path}`, { ...init, cache: 'no-store', headers: { 'X-Goog-Api-Key': KEY!, 'X-Goog-FieldMask': mask, 'Content-Type': 'application/json' } })
 
-/** Finds this place's Google listing by name near its coordinates; refuses matches more than ~250 m away or with a different name. */
+type Candidate = { id: string; displayName?: { text: string }; location?: { latitude: number; longitude: number } }
+
+/**
+ * Finds this place's Google listing by name near its coordinates. Google's top result is sometimes a
+ * neighbour at the same address (the club shop rather than the stadium), so we take the first of
+ * several candidates that is both within ~250 m and shares our name, and refuse the rest.
+ */
 async function findId(place: Place): Promise<string | null> {
   const res = await call('places:searchText', 'places.id,places.location,places.displayName', {
     method: 'POST',
-    body: JSON.stringify({ textQuery: `${place.name}, ${place.address ?? 'London'}`, pageSize: 1, locationBias: { circle: { center: { latitude: place.lat, longitude: place.lng }, radius: 150 } } }),
+    body: JSON.stringify({ textQuery: `${place.name}, ${place.address ?? 'London'}`, pageSize: 5, locationBias: { circle: { center: { latitude: place.lat, longitude: place.lng }, radius: 150 } } }),
   })
-  const hit = res.ok ? (await res.json()).places?.[0] : null
-  if (!hit?.location || !sameName(place.name, hit.displayName?.text ?? '')) return null
-  const metres = Math.hypot((hit.location.latitude - place.lat) * 111320, (hit.location.longitude - place.lng) * 69500)
-  return metres < 250 ? hit.id : null
+  const candidates: Candidate[] = res.ok ? (await res.json()).places ?? [] : []
+  const metres = (c: Candidate) => c.location ? Math.hypot((c.location.latitude - place.lat) * 111320, (c.location.longitude - place.lng) * 69500) : Infinity
+  const match = candidates.find(c => metres(c) < 250 && sameName(place.name, c.displayName?.text ?? ''))
+  // Leave a trail when nothing fits, so "why has this place no Google details?" can be answered from the logs.
+  if (!match) console.info(`No Google listing accepted for "${place.name}"${res.ok ? '' : ` (search answered ${res.status})`}: ${candidates.map(c => `${c.displayName?.text} at ${Math.round(metres(c))} m`).join('; ') || 'no candidates'}`)
+  return match?.id ?? null
 }
 
 export async function googlePlace(place: Place): Promise<GooglePlace | null> {
