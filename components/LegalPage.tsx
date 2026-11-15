@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Footer from './Footer'
+import { Logo } from './ui'
 import { APP_NAME } from '@/lib/config'
 
 /** Plain, readable layout for the public legal pages (no sign-in needed). */
@@ -7,7 +8,7 @@ export default function LegalPage({ title, updated, children }: { title: string;
   return (
     <>
       <header className="p-2 sm:p-3"><div className="card mx-auto flex max-w-3xl items-center gap-3 px-3 py-2">
-        <Link href="/" className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl border-2 border-ink bg-sun text-lg shadow-pop-sm">🏘️</span><b className="font-display text-lg">{APP_NAME}</b></Link>
+        <Link href="/" className="flex items-center gap-2"><Logo /><b className="font-display text-lg">{APP_NAME}</b></Link>
         <Link href="/" className="btn btn-white btn-sm ml-auto">Back to the site</Link>
       </div></header>
       <main className="mx-auto max-w-3xl px-3 pt-4 pb-10 sm:px-4">

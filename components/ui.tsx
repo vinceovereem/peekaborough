@@ -14,6 +14,12 @@ export function Stars({ rating, count }: { rating: number | null; count?: number
   )
 }
 
+/** The clay house-and-tree logo: public/logo.webp, cut by scripts/cut-logo.py. */
+export function Logo({ className = 'size-10' }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- one small static file
+  return <img src="/logo.webp" alt="" className={`shrink-0 ${className}`} />
+}
+
 /** The clay badge for a place category: public/icons, cut from one modelled sheet by scripts/cut-icons.py. */
 export function CategoryIcon({ category, className = 'size-5' }: { category: Category; className?: string }) {
   // eslint-disable-next-line @next/next/no-img-element -- twelve tiny static files; the image optimiser would only add a round trip
