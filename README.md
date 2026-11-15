@@ -14,17 +14,25 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-With no environment variables the app runs in **preview mode**: the real places and events, held in
-memory, with three one-click guest accounts on the sign-in page:
+### Who can do what
 
-| Guest | Try |
+| Visitor | Gets |
 |---|---|
-| Resident | Explore the map, review a place, post in Trade, vote ideas up or down in Needs, suggest an event, edit "My profile" |
-| Business owner | Find a business and claim it; once an admin approves, manage its hours, menu, news and events |
-| Admin | "Admin" → approve ownership claims and suggested events, hide a review |
+| Signed out | The front page, `/guides` and the legal pages |
+| Pressed **Skip** on the front page (a viewer) | Reads the map, places, What's on, News and Needs. Cannot review, vote, save favourites, suggest events, see or post Trade listings (they carry contact details), or use Ask. Place pages skip the paid Google lookups. "My profile" is where they sign in later |
+| Signed in with Google | Everything a resident can do, plus claiming and running a business page |
+| Admin | The back office |
 
-Preview mode also deploys as-is (no keys needed). Anything a guest adds is temporary: it resets on
-restart and isn't shared between server instances.
+`proxy.ts` does the first check, pages use `requireVisitor()` / `requireUser()` / `requireAdmin()`, every
+save goes through `requireUser()`, and the database's row-level security has the last word.
+
+### Without a database
+
+With no environment variables the app runs in **preview mode**: the real places and events, held in
+memory. Google sign-in is not connected, so everyone is a viewer. On your own machine (`npm run dev`)
+the sign-in page also has a "Testing tools" fold with three stand-in accounts (resident, business
+owner, admin) for trying signed-in features; they do not exist in any deployed build. Anything they
+add is temporary: it resets on restart.
 
 ## Where the content comes from
 

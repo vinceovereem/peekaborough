@@ -1,10 +1,10 @@
-import { requireUser } from '@/lib/auth'
+import { requireVisitor } from '@/lib/auth'
 import Nav from './Nav'
 import { Flash } from './ui'
 import Footer from './Footer'
 
 export default async function Shell({ title, intro, flash, children }: { title: string; intro?: string; flash?: { ok?: string; error?: string }; children: React.ReactNode }) {
-  const user = await requireUser()
+  const user = await requireVisitor() // pages that need an account check requireUser() themselves, before rendering this
   return (
     <>
       <Nav user={user} />

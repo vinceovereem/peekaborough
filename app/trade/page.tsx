@@ -1,7 +1,7 @@
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
-import { Empty } from '@/components/ui'
-import { requireUser } from '@/lib/auth'
+import { Empty, SignInPrompt } from '@/components/ui'
+import { requireVisitor } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { LISTING_KINDS, type ListingKind } from '@/lib/config'
 import { formatPrice, formatDay } from '@/lib/hours'
@@ -11,10 +11,13 @@ export const metadata = { title: 'Trade' }
 const COLOURS: Record<ListingKind, string> = { sell: 'bg-sun', free: 'bg-grass', swap: 'bg-sky', wanted: 'bg-bubble', service: 'bg-grape' }
 
 export default async function TradePage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, flash] = await Promise.all([requireUser(), searchParams])
+  const [user, flash] = await Promise.all([requireVisitor(), searchParams])
+  const intro = 'Sell it, swap it, lend it or give it away — to people who live round the corner.'
+  // Listings show how to reach the person who posted them, so they are for signed-in neighbours only (the database enforces it too).
+  if (!user) return <Shell title="Trade" intro={intro}><SignInPrompt>Listings include neighbours&apos; contact details, so sign in to see them or to post your own.</SignInPrompt></Shell>
   const listings = await repo.listings(user.id)
   return (
-    <Shell title="Trade" intro="Sell it, swap it, lend it or give it away — to people who live round the corner." flash={flash}>
+    <Shell title="Trade" intro={intro} flash={flash}>
       <details className="card mb-8 p-4">
         <summary className="font-display cursor-pointer text-xl font-bold">➕ Post something</summary>
         <form action={createListing} className="mt-4 grid gap-3 sm:grid-cols-2">
