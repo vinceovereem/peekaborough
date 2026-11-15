@@ -99,21 +99,23 @@ export function parseHours(input) {
 }
 
 // Hand-picked local icons: always shown on the map, bigger pins. Keyed "name|category as imported".
+// Descriptions here are plain, checkable facts (what it is, where it is) — no capacities, founding
+// dates or superlatives. Anything richer should come from the owner or a cited source.
 const LANDMARKS = {
-  'Emirates Stadium|active': { description: "Home of Arsenal FC since 2006 — 60,000 seats, match days, stadium tours and the occasional summer concert." },
-  'Highbury Fields|green': { description: "Islington's largest green space: tennis courts, a playground, the leisure centre pool and Saturday-morning parkrun." },
-  'Finsbury Park|green': { description: 'A 110-acre Victorian park with a boating lake, athletics track, cafés and big summer festivals. Just over the border in Haringey.' },
-  'Clissold Park|green': { description: 'Deer, goats, a paddling pool and Clissold House café. Just over the border in Hackney.' },
-  'Caledonian Park|green': { description: 'A hilltop park around the old cattle-market clock tower, with views across London.' },
+  'Emirates Stadium|active': { description: 'Home of Arsenal Football Club.' },
+  'Highbury Fields|green': { description: 'A large park with tennis courts, a playground and a swimming pool. A free 5k parkrun starts here every Saturday at 9am.' },
+  'Finsbury Park|green': { description: 'A large park with a boating lake, an athletics track and cafés. Just over the border in Haringey.' },
+  'Clissold Park|green': { description: 'A park with a deer enclosure, a paddling pool and a café in Clissold House. Just over the border in Hackney.' },
+  'Caledonian Park|green': { description: 'A park around the clock tower of the former Metropolitan Cattle Market.' },
   'Whittington Park|green': {}, 'Barnard Park|green': {}, 'Spa Fields|green': {},
-  'Union Chapel|community': { category: 'culture', subcategory: 'music venue', description: 'A working Gothic chapel that doubles as one of London\'s best-loved live music venues.' },
-  'The Garage|drink': { category: 'culture', subcategory: 'music venue', description: 'Indie and rock gigs on Highbury Corner since 1993.' },
+  'Union Chapel|community': { category: 'culture', subcategory: 'music venue', description: 'A working church that is also a live music venue.' },
+  'The Garage|drink': { category: 'culture', subcategory: 'music venue', description: 'A live music venue at Highbury Corner.' },
   'O2 Academy Islington|drink': { category: 'culture', subcategory: 'music venue' }, 'Islington Assembly Hall|culture': {},
-  "Sadler's Wells Theatre|culture": { description: "London's dance house: contemporary dance, ballet and flamenco on Rosebery Avenue." }, "Sadler's Wells|culture": {},
-  'Almeida Theatre|culture': { description: 'A 325-seat theatre off Upper Street with a habit of sending shows to the West End.' },
+  "Sadler's Wells Theatre|culture": { description: 'A theatre dedicated to dance, on Rosebery Avenue.' }, "Sadler's Wells|culture": { description: 'A theatre dedicated to dance, on Rosebery Avenue.' },
+  'Almeida Theatre|culture': { description: 'A theatre just off Upper Street.' },
   "King's Head Theatre|culture": {}, 'Little Angel Theatre|culture': {}, 'Screen on the Green|culture': {}, 'Business Design Centre|community': {},
   'Exmouth Market|community': {}, 'Camden Passage Antiques Market|community': {},
-  'Chapel Market|community': { description: 'A proper street market since the 1870s: fruit and veg, street food, and a farmers\' market on Sundays.' },
+  'Chapel Market|community': { description: 'A street market near Angel.' },
   'Highbury & Islington|transport': {}, 'Arsenal|transport': {}, 'Finsbury Park|transport': {}, 'Angel|transport': {}, 'Archway|transport': {},
   'Farringdon|transport': {}, 'Old Street|transport': {}, 'Holloway Road|transport': {}, 'Caledonian Road|transport': {}, 'Tufnell Park|transport': {},
 }

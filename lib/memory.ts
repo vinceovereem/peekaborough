@@ -1,18 +1,21 @@
-// Demo-mode data store: real places from data/places.json plus sample content, held in memory.
-// ponytail: writes vanish on restart and aren't shared between server instances — that's the point
-// of demo mode. Add Supabase keys and lib/supabase-repo.ts takes over with the same interface.
+// Data store used before a database is connected: the real places from data/places.json and the
+// real events, held in memory. It starts with no reviews, listings, wishes or claims — only what
+// visitors add themselves.
+// ponytail: writes vanish on restart and aren't shared between server instances. Add Supabase keys
+// and lib/supabase-repo.ts takes over with the same interface.
 import rawPlaces from '@/data/places.json'
-import { DEMO_PLACES, DEMO_OWNERS, DEMO_MENU, DEMO_NAMES, DEMO_USERS, demoPosts, demoReviews, demoEvents, demoListings, demoWishes, demoClaims } from '@/data/demo'
+import { DEMO_USERS, realEvents } from '@/data/demo'
 import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim } from './types'
 import type { ExternalEvent } from './sources'
 
 type Row = Omit<Place, 'rating' | 'review_count'>
+type WishRow = Omit<Wish, 'author' | 'ups' | 'downs' | 'mine'> & { votes: Record<string, 1 | -1> }
 function init() {
   return {
-    places: [...DEMO_PLACES, ...(rawPlaces as Row[])],
-    owners: new Set(DEMO_OWNERS), menu: DEMO_MENU as MenuItem[], posts: demoPosts(), reviews: demoReviews(),
-    events: demoEvents(), listings: demoListings(), wishes: demoWishes(), claims: demoClaims(),
-    names: { ...DEMO_NAMES } as Record<string, string>,
+    places: rawPlaces as Row[],
+    owners: new Set<string>(), menu: [] as MenuItem[], posts: [] as Post[], reviews: [] as Review[],
+    events: realEvents(), listings: [] as Listing[], wishes: [] as WishRow[], claims: [] as Claim[],
+    names: Object.fromEntries(DEMO_USERS.map(u => [u.id, u.name])) as Record<string, string>,
   }
 }
 const g = globalThis as unknown as { __patch?: ReturnType<typeof init> }
@@ -26,7 +29,7 @@ function withRating(p: Row): Place {
   return { ...p, review_count: rs.length, rating: rs.length ? Math.round(rs.reduce((s, r) => s + r.rating, 0) / rs.length * 10) / 10 : null }
 }
 const placeRef = (place_id: string) => { const p = db().places.find(p => p.id === place_id)!; return { name: p.name, slug: p.slug, category: p.category, address: p.address, website: p.website } }
-const toWish = (w: ReturnType<typeof demoWishes>[number], userId: string | null): Wish =>
+const toWish = (w: WishRow, userId: string | null): Wish =>
   ({ id: w.id, user_id: w.user_id, title: w.title, description: w.description, status: w.status, created_at: w.created_at, author: db().names[w.user_id] ?? 'Neighbour',
     ups: Object.values(w.votes).filter(v => v === 1).length, downs: Object.values(w.votes).filter(v => v === -1).length, mine: (userId && w.votes[userId]) || 0 })
 const toClaim = (c: Claim): Claim => ({ ...c, place: placeRef(c.place_id), claimant: { name: db().names[c.user_id] ?? 'Neighbour', email: DEMO_USERS.find(u => u.id === c.user_id)?.email ?? null } })

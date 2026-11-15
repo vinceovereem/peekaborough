@@ -72,18 +72,31 @@ test('news feeds: RSS and Atom', () => {
 })
 
 test('matching a place to its Google listing by name', () => {
-  assert.ok(sameName("Sadler's Wells", 'Sadler’s Wells Theatre'))
-  assert.ok(sameName('Beam', 'Beam Highbury'))
-  assert.ok(sameName('Café Olé', 'Cafe Ole Islington'))           // accents and generic words ignored
-  assert.ok(sameName('The Coffee House', 'the coffee house'))      // only everyday words: must match exactly
-  assert.ok(!sameName('The Coffee House', 'The Coffee Shop'))
-  assert.ok(sameName('Emirates Stadium', 'Arsenal - Emirates Stadium'))
-  assert.ok(sameName('Costa', 'Costa Coffee'))
-  assert.ok(!sameName('Arsenal Barbers', 'Blackstock Dry Cleaners'), 'a neighbour is not a match')
-  // neighbours that share the area name or the trade are still different businesses
-  assert.ok(!sameName('Highbury Dental', 'Highbury Pharmacy'))
-  assert.ok(!sameName('Arsenal Barbers', 'Blackstock Barbers'))
-  assert.ok(!sameName('Angel', 'Islington High Street'))
-  assert.ok(!sameName('Screen on the Green', 'Everyman'), 'a rebranded listing is refused rather than guessed')
-  assert.ok(!sameName('Union Chapel', ''))
+  const same = (a: string, b: string) => assert.ok(sameName(a, b), `"${a}" should match "${b}"`)
+  const different = (a: string, b: string) => assert.ok(!sameName(a, b), `"${a}" should NOT match "${b}"`)
+  // the whole of the shorter name is in the longer one
+  same("Sadler's Wells", 'Sadler’s Wells Theatre')
+  same('Beam', 'Beam Highbury')
+  same('Emirates Stadium', 'Arsenal - Emirates Stadium')
+  same('Costa', 'Costa Coffee')
+  same('Café Olé', 'Cafe Ole Islington')
+  same('The Coffee House', 'the coffee house') // only everyday words: must match exactly
+  // spelling slips (seen on the live site)
+  same('Sari Ciceak Supermarket', 'Sari Çicek Supermarket London')
+  same('Fryingdon Fish Bar', 'Fryingdon')
+  // one word differs, two others match and one of them is the business's own name (seen on the live site)
+  same('Maandli Hair & Beauty', 'Maandli Hair Salon')
+  // neighbours that share only the area, the trade, or both
+  different('The Coffee House', 'The Coffee Shop')
+  different('Arsenal Barbers', 'Blackstock Dry Cleaners')
+  different('Arsenal Barbers', 'Blackstock Barbers')
+  different('Highbury Dental', 'Highbury Pharmacy')
+  different('Highbury Corner Dental', 'Highbury Corner Pharmacy') // two shared words, but both are locations
+  different('Turkish Kitchen', 'Turkish Grill')
+  different('Angel', 'Islington High Street')
+  different('Piccolo Olivio', 'Piccolo Mondo')
+  different('Screen on the Green', 'Everyman') // a rebranded listing is refused rather than guessed
+  different('Union Chapel', '')
+  // a slip is only forgiven in longer words
+  different('Wine Rack', 'Wing Rack')
 })

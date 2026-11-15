@@ -1,5 +1,5 @@
 // Builds supabase/seed.sql from data/places.json + data/fixtures.json: real places and real events only.
-// (Sample reviews/listings/wishes are demo-mode only; a live database should start with real ones.)
+// Nothing invented goes in: reviews, listings and wishes start empty and are added by real people.
 import { readFileSync, writeFileSync } from 'node:fs'
 const read = f => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'))
 const q = v => v == null ? 'null' : typeof v === 'boolean' || typeof v === 'number' ? String(v) : typeof v === 'object' ? `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb` : `'${String(v).replace(/'/g, "''")}'`

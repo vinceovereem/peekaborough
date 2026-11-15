@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="mt-6"><Flash error={error} /></div>
           {DEMO ? (
             <div>
-              <p className="mb-2 font-bold">Prototype — step in as:</p>
+              <p className="mb-2 font-bold">Preview — step in as a guest:</p>
               <form action={demoSignIn} className="grid gap-2 sm:grid-cols-3">
                 {DEMO_USERS.map((u, i) => (
                   <button key={u.key} name="as" value={u.key} className={`btn h-auto flex-col !items-start !gap-0 text-left ${['bg-sun', 'bg-grass', 'bg-sky'][i]}`}>
@@ -39,7 +39,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                   </button>
                 ))}
               </form>
-              <p className="muted mt-3 text-xs">Demo mode: real places and fixtures, sample people. Nothing you do here is saved for good. Google sign-in switches on when the database is connected.</p>
+              <p className="muted mt-3 text-xs">This is a preview. The places and events are real; anything you add as a guest is temporary. Sign-in with Google is coming.</p>
             </div>
           ) : (
             <form action={googleSignIn}>
