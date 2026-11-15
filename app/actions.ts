@@ -77,6 +77,25 @@ export async function voteOnWish(fd: FormData) {
   redirect('/needs')
 }
 
+export async function toggleFavorite(fd: FormData) {
+  return act(fd, z.object({ place_id: id, slug }), async (d, user) => {
+    await repo.toggleFavorite(user.id, d.place_id)
+    return { path: `/place/${d.slug}`, ok: 'Favourites updated.' }
+  })
+}
+
+export async function applyAsAdmin(fd: FormData) {
+  const schema = z.object({
+    full_name: text(120, 'your full name'), email: z.email('Enter an email we can reach you on'), phone: z.string().trim().min(5, 'Please add a phone number').max(40),
+    address: z.string().trim().min(5, 'Please add your address').max(300), years_in_area: z.coerce.number('How many years have you lived here?').int().min(0).max(120),
+    occupation: text(120, 'what you do for work'), favourite_thing: text(1000, 'your favourite thing about the area'),
+  })
+  return act(fd, schema, async (d, user) => {
+    await repo.createApplication(user, d)
+    return { path: '/apply', ok: 'Application sent. Book a call below so we can meet.' }
+  })
+}
+
 export async function saveProfile(fd: FormData) {
   return act(fd, z.object({ name: text(60, 'your name') }), async (d, user) => {
     await repo.updateProfile(user.id, d.name)
@@ -159,6 +178,30 @@ export async function decideClaim(fd: FormData) {
   return act(fd, z.object({ id, decision: z.enum(['approve', 'reject']), note: optional(500) }), async d => {
     await repo.decideClaim(d.id, d.decision === 'approve', d.note)
     return { path: '/admin', ok: d.decision === 'approve' ? 'Approved — they can now manage the page.' : 'Claim rejected.' }
+  })
+}
+export async function decideApplication(fd: FormData) {
+  await requireAdmin()
+  return act(fd, z.object({ id, decision: z.enum(['approve', 'reject']), note: optional(500) }), async d => {
+    await repo.decideApplication(d.id, d.decision === 'approve', d.note)
+    return { path: '/admin', ok: d.decision === 'approve' ? 'Approved — they are now an admin.' : 'Application declined.' }
+  })
+}
+export async function addAdmin(fd: FormData) {
+  await requireAdmin()
+  return act(fd, z.object({ email: z.email('Enter the email address they sign in with') }), async d => {
+    const account = await repo.findAccountByEmail(d.email)
+    if (!account) throw new Friendly('No account uses that email yet. Ask them to sign in to the site once, then try again.')
+    await repo.setAdmin(account.id, true)
+    return { path: '/admin', ok: `${account.name} is now an admin.` }
+  })
+}
+export async function removeAdmin(fd: FormData) {
+  const me = await requireAdmin()
+  return act(fd, z.object({ id }), async d => {
+    if (d.id === me.id) throw new Friendly('You can’t remove yourself — ask another admin to do it, so there is always at least one.')
+    await repo.setAdmin(d.id, false)
+    return { path: '/admin', ok: 'Admin access removed.' }
   })
 }
 export async function syncNow() {

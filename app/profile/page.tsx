@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
-import { Stars, Empty } from '@/components/ui'
+import { Stars, CategoryTag, Empty } from '@/components/ui'
 import { requireUser } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { LISTING_KINDS } from '@/lib/config'
@@ -12,7 +12,7 @@ export const metadata = { title: 'My profile' }
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const [user, flash] = await Promise.all([requireUser(), searchParams])
-  const [reviews, listings] = await Promise.all([repo.myReviews(user.id), repo.listings(user.id)])
+  const [favourites, reviews, listings, application] = await Promise.all([repo.myFavorites(user.id), repo.myReviews(user.id), repo.listings(user.id), repo.myApplication(user.id)])
   const mine = listings.filter(l => l.user_id === user.id)
   return (
     <Shell title="My profile" flash={flash}>
@@ -29,8 +29,21 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <p className="my-2 text-sm">{user.is_owner ? 'Update your hours, menu, news and events.' : 'Claim your page for free and keep your hours, menu, prices and news up to date yourself.'}</p>
             <Link href="/business" className="btn w-full">{user.is_owner ? 'Open my business' : 'Claim my business'}</Link>
           </section>
+          {!user.is_admin && <section className="card bg-grass/40 p-5">
+            <h2 className="text-xl font-bold">🛠️ Help run Peekaborough</h2>
+            <p className="my-2 text-sm">{application?.status === 'pending' ? 'Your application to be an admin is with us.' : 'Admins check business owners, approve events and keep things friendly.'}</p>
+            <Link href="/apply" className="btn btn-white w-full">{application ? 'See my application' : 'Apply to be an admin'}</Link>
+          </section>}
         </div>
         <div className="space-y-8">
+          <section>
+            <h2 className="mb-2 text-2xl font-bold">♥ My favourites</h2>
+            {favourites.length === 0 ? <Empty>No favourites yet. Open any place and tap “Add to favourites”; they also get their own filter on the <Link href="/" className="underline">map</Link>.</Empty> : (
+              <ul className="grid gap-2 sm:grid-cols-2">{favourites.map(p => (
+                <li key={p.id}><Link href={`/place/${p.slug}`} className="card block p-3 hover:bg-sun/30"><CategoryTag category={p.category} sub={p.subcategory} /><b className="mt-1 block truncate text-lg">{p.name}</b><span className="muted block truncate text-sm">{p.address ?? ' '}</span></Link></li>
+              ))}</ul>
+            )}
+          </section>
           <section>
             <h2 className="mb-2 text-2xl font-bold">⭐ My reviews</h2>
             {reviews.length === 0 ? <Empty>You haven&apos;t reviewed anywhere yet. Find a favourite on the <Link href="/" className="underline">map</Link>.</Empty> : (

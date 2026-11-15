@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth'
 import Nav from './Nav'
 import { Flash } from './ui'
+import Footer from './Footer'
 
 export default async function Shell({ title, intro, flash, children }: { title: string; intro?: string; flash?: { ok?: string; error?: string }; children: React.ReactNode }) {
   const user = await requireUser()
@@ -13,6 +14,7 @@ export default async function Shell({ title, intro, flash, children }: { title: 
         <Flash {...flash} />
         {children}
       </main>
+      <Footer />
     </>
   )
 }

@@ -4,7 +4,7 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { createClient, createAdminClient } from './supabase/server'
 import type { Repo } from './memory'
-import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim } from './types'
+import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication } from './types'
 
 function ok<T>({ data, error }: { data: T; error: PostgrestError | null }): NonNullable<T> {
   if (error) throw new Error(error.message)
@@ -73,6 +73,23 @@ export const supabaseRepo: Repo = {
     return ok(await (await createClient()).from('reviews').select('*, place:places(name,slug)').eq('user_id', userId).order('created_at', { ascending: false })).map((r: any) => ({ ...r, author: '' })) as Review[]
   },
   async updateProfile(userId, name) { ok(await (await createClient()).from('profiles').update({ display_name: name }).eq('id', userId).select('id')) },
+  async favoriteIds(userId) { return ok(await (await createClient()).from('favorites').select('place_id').eq('user_id', userId)).map((r: any) => r.place_id) },
+  async myFavorites(userId) {
+    const ids = await supabaseRepo.favoriteIds(userId)
+    return ids.length ? ok(await (await createClient()).from('places_view').select('*').in('id', ids).eq('status', 'published')) as Place[] : []
+  },
+  async toggleFavorite(userId, placeId) {
+    const db = await createClient()
+    const removed = ok(await db.from('favorites').delete().eq('user_id', userId).eq('place_id', placeId).select('place_id'))
+    if (!removed.length) ok(await db.from('favorites').insert({ user_id: userId, place_id: placeId }).select('place_id'))
+  },
+  async myApplication(userId) {
+    return (await (await createClient()).from('admin_applications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle()).data as AdminApplication | null
+  },
+  async createApplication(user, a) {
+    const { error } = await (await createClient()).from('admin_applications').insert({ ...a, user_id: user.id })
+    if (error && error.code !== '23505') throw new Error(error.message) // 23505 = already has a pending application
+  },
   async myClaims(userId) {
     return ok(await (await createClient()).from('claims').select('*, place:places(name,slug,address,website)').eq('user_id', userId).order('created_at', { ascending: false })) as Claim[]
   },
@@ -124,12 +141,14 @@ export const supabaseRepo: Repo = {
       if (filter) q = q.eq(filter[0], filter[1])
       return (await q).count ?? 0
     }
-    const [claims, pendingEvents, reviews, listings, wishes, emails] = await Promise.all([
+    const [claims, pendingEvents, reviews, listings, wishes, applications, adminRows, emails] = await Promise.all([
       db.from('claims').select('*, place:places(name,slug,address,website), profiles(display_name)').order('created_at', { ascending: false }).limit(100),
       db.from('events').select('*').eq('status', 'pending').order('starts_at'),
       db.from('reviews').select('*, profiles(display_name), place:places(name,slug)').order('created_at', { ascending: false }).limit(30),
       db.from('listings').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(30),
       db.from('wishes').select('*, profiles!wishes_user_id_fkey(display_name), wish_votes(user_id, value)').order('created_at', { ascending: false }).limit(30),
+      db.from('admin_applications').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(100),
+      db.from('profiles').select('id, display_name').eq('is_admin', true).order('created_at'),
       db.auth.admin.listUsers({ perPage: 1000 }), // ponytail: fine below 1000 users; look claimants up one by one after that
     ])
     const emailOf = new Map(emails.data?.users.map(u => [u.id, u.email ?? null]))
@@ -139,6 +158,8 @@ export const supabaseRepo: Repo = {
       reviews: ok(reviews).map((r: any) => ({ ...r, author: author(r) })) as Review[],
       listings: ok(listings).map((r: any) => ({ ...r, author: author(r) })) as Listing[],
       wishes: ok(wishes).map((r: any) => ({ ...r, author: author(r), ...tally(r, null) })) as Wish[],
+      applications: ok(applications).map((a: any) => ({ ...a, account: { name: author(a), email: emailOf.get(a.user_id) ?? null } })) as AdminApplication[],
+      admins: ok(adminRows).map((p: any) => ({ id: p.id, name: p.display_name, email: emailOf.get(p.id) ?? null })),
       counts: {
         places: await count('places'), verified: await count('places', ['verified', true]), reviews: await count('reviews'),
         events: await count('events', ['status', 'published']), listings: await count('listings', ['status', 'active']), wishes: await count('wishes'),
@@ -152,6 +173,20 @@ export const supabaseRepo: Repo = {
     if (!claim || !approve) return
     ok(await db.from('place_owners').upsert({ place_id: claim.place_id, user_id: claim.user_id }).select('place_id'))
     ok(await db.from('places').update({ verified: true }).eq('id', claim.place_id).select('id'))
+  },
+  async decideApplication(applicationId, approve, note) {
+    const db = createAdminClient()
+    const [application] = ok(await db.from('admin_applications').update({ status: approve ? 'approved' : 'rejected', admin_note: note, reviewed_at: new Date().toISOString() }).eq('id', applicationId).eq('status', 'pending').select('user_id')) as { user_id: string }[]
+    if (application && approve) await supabaseRepo.setAdmin(application.user_id, true)
+  },
+  async setAdmin(userId, isAdmin) { ok(await createAdminClient().from('profiles').update({ is_admin: isAdmin }).eq('id', userId).select('id')) },
+  async findAccountByEmail(email) {
+    const db = createAdminClient()
+    const { data } = await db.auth.admin.listUsers({ perPage: 1000 }) // ponytail: same 1000-account ceiling as the claims list
+    const user = data?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+    if (!user) return null
+    const profile = (await db.from('profiles').select('display_name').eq('id', user.id).maybeSingle()).data
+    return { id: user.id, name: profile?.display_name ?? 'Neighbour', email: user.email ?? null }
   },
   async moderate(table, rowId, status) { ok(await createAdminClient().from(table).update({ status }).eq('id', rowId).select('id')) },
 }

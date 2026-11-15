@@ -13,7 +13,7 @@ import { lineStatus } from '@/lib/tfl'
 import { sunTimes } from '@/lib/sun'
 import { EVENT_KINDS } from '@/lib/config'
 import { DAY_KEYS, DAY_LABELS, londonNow, formatPrice, formatDay, formatTime } from '@/lib/hours'
-import { addReview, moderate } from '@/app/actions'
+import { addReview, moderate, toggleFavorite } from '@/app/actions'
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ ok?: string; error?: string }> }
 
@@ -30,8 +30,8 @@ export default async function PlacePage({ params, searchParams }: Props) {
   const place = await repo.place(slug)
   if (!place || (place.status === 'hidden' && !user.is_admin)) notFound()
   const lines = place.extra.lines
-  const [menu, posts, events, reviews, isOwner, google, status] = await Promise.all([
-    repo.menu(place.id), repo.posts(place.id), repo.events(place.id), repo.reviews(place.id, user.id), repo.isOwner(user.id, place.id),
+  const [menu, posts, events, reviews, isOwner, favourites, google, status] = await Promise.all([
+    repo.menu(place.id), repo.posts(place.id), repo.events(place.id), repo.reviews(place.id, user.id), repo.isOwner(user.id, place.id), repo.favoriteIds(user.id),
     googlePlace(place), lines ? lineStatus(lines.map(l => l.id)) : undefined,
   ])
   const now = new Date(), today = londonNow(now).day
@@ -42,6 +42,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
   const mapsUrl = google?.googleMapsUri ?? googleMapsUrl(linked)
   const googleHours = google?.regularOpeningHours?.weekdayDescriptions
   const googlePhoto = !place.cover_url ? google?.photoUri : undefined
+  const isFavourite = favourites.includes(place.id)
   const sun = place.extra.outdoor_seating ? sunTimes(now, place.lat, place.lng) : null
 
   return (
@@ -71,6 +72,8 @@ export default async function PlacePage({ params, searchParams }: Props) {
             </div>
             {lines && <div className="mt-3"><LinePills lines={lines} status={status} /></div>}
             <div className="mt-4 flex flex-wrap gap-2">
+              <form action={toggleFavorite}><input type="hidden" name="place_id" value={place.id} /><input type="hidden" name="slug" value={place.slug} /><input type="hidden" name="_from" value={`/place/${place.slug}`} />
+                <button className={`btn ${isFavourite ? 'bg-bubble' : 'btn-white'}`} aria-pressed={isFavourite}>{isFavourite ? '♥ In your favourites' : '♡ Add to favourites'}</button></form>
               {place.booking_url && <a href={place.booking_url} target="_blank" rel="noreferrer nofollow" className="btn bg-grass">📅 Book</a>}
               <Link href={`/?place=${place.slug}`} className="btn">🗺️ Show on map</Link>
               <a href={directionsUrl(linked)} target="_blank" rel="noreferrer" className="btn btn-white">🧭 Directions</a>

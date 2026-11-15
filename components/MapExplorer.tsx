@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import CartoonMap, { type MapPin } from './CartoonMap'
 import PlacePicture from './PlacePicture'
 import AskPanel from './AskPanel'
@@ -10,19 +10,29 @@ import { isOpenNow, formatDay, formatTime, formatPrice, dayKey } from '@/lib/hou
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
 import type { MapPlace, Event, Post } from '@/lib/types'
 
-type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; initialSlug?: string; now: string; askEnabled: boolean }
+type Props = { places: MapPlace[]; events: Event[]; posts: Post[]; favourites: string[]; initialSlug?: string; now: string; askEnabled: boolean }
 const venueKey = (e: Event) => `${e.lat.toFixed(4)},${e.lng.toFixed(4)}`
 
+const NO_PINS: MapPin[] = []
+const noSubscription = () => () => {}
+const readHideEvents = () => { try { return localStorage.getItem('hide-events') === '1' } catch { return false } }
 // The server leaves empty fields out to keep the list small; put the defaults back.
 const BLANK = { subcategory: null, address: null, hours: null, cover_url: null, extra: {}, is_landmark: false, is_demo: false, verified: false, rating: null, review_count: 0 }
 
-export default function MapExplorer({ places: slim, events, posts, initialSlug, now: nowISO, askEnabled }: Props) {
+export default function MapExplorer({ places: slim, events, posts, favourites, initialSlug, now: nowISO, askEnabled }: Props) {
   const now = useMemo(() => new Date(nowISO), [nowISO])
   const places = useMemo(() => slim.map(p => ({ ...BLANK, ...p })), [slim])
   const [cat, setCat] = useState<Category | null>(null)
   const [q, setQ] = useState('')
   const [openOnly, setOpenOnly] = useState(false)
   const [outside, setOutside] = useState(false)
+  const [favsOnly, setFavsOnly] = useState(false)
+  // Event bubbles can be switched off for a cleaner map; the choice is remembered on this device.
+  const storedHidden = useSyncExternalStore(noSubscription, readHideEvents, () => false)
+  const [eventsChoice, setEventsChoice] = useState<boolean | null>(null) // null until toggled in this visit
+  const showEvents = eventsChoice ?? !storedHidden
+  const toggleEvents = () => { setEventsChoice(!showEvents); try { localStorage.setItem('hide-events', showEvents ? '1' : '0') } catch { /* private window: works for this visit, just isn't remembered */ } }
+  const favSet = useMemo(() => new Set(favourites), [favourites])
   const [placeId, setPlaceId] = useState<string | null>(() => places.find(p => p.slug === initialSlug)?.id ?? null)
   const [venue, setVenue] = useState<string | null>(null)
   // null = not touched yet: the panel starts open on a desktop and tucked away on a phone
@@ -35,8 +45,9 @@ export default function MapExplorer({ places: slim, events, posts, initialSlug, 
     return places.filter(p => (!cat || p.category === cat)
       && (!s || p.name.toLowerCase().includes(s) || (p.subcategory ?? '').toLowerCase().includes(s))
       && (!openOnly || isOpenNow(p.hours, now))
-      && (!outside || p.extra.outdoor_seating))
-  }, [places, cat, q, openOnly, outside, now])
+      && (!outside || p.extra.outdoor_seating)
+      && (!favsOnly || favSet.has(p.id)))
+  }, [places, cat, q, openOnly, outside, favsOnly, favSet, now])
 
   // One bobbing label per venue with something on in the next fortnight.
   const { pins, byVenue } = useMemo(() => {
@@ -56,7 +67,7 @@ export default function MapExplorer({ places: slim, events, posts, initialSlug, 
   const matchToday = events.find(e => e.kind === 'football' && dayKey(e.starts_at) === dayKey(nowISO))
   const topRated = useMemo(() => places.filter(p => p.rating != null).sort((a, b) => b.rating! - a.rating! || b.review_count - a.review_count).slice(0, 3), [places])
   const suggestions = q.trim().length > 1 && !place ? shown.slice(0, 6) : []
-  const filters = +!!cat + +openOnly + +outside + +!!q.trim()
+  const filters = +!!cat + +openOnly + +outside + +favsOnly + +!!q.trim()
 
   const closeCard = () => { setPlaceId(null); setVenue(null) }
   const pickPlace = (id: string | null) => { setPlaceId(id); setVenue(null); setAsking(false); setPanel(p => p === null ? null : false) }
@@ -64,7 +75,7 @@ export default function MapExplorer({ places: slim, events, posts, initialSlug, 
 
   return (
     <div className="relative h-dvh overflow-hidden">
-      <CartoonMap places={shown} pins={pins} selected={selected} onPlace={pickPlace} onPin={pickVenue} />
+      <CartoonMap places={shown} pins={showEvents ? pins : NO_PINS} selected={selected} onPlace={pickPlace} onPin={pickVenue} />
 
       {/* search + filters — one tap hides the lot */}
       <div className="pointer-events-none absolute inset-x-0 top-[68px] z-10 px-2 sm:top-[76px] sm:px-3">
@@ -88,6 +99,8 @@ export default function MapExplorer({ places: slim, events, posts, initialSlug, 
           </div>
           {tools && <div className="pointer-events-auto mt-2 flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none]">
             <button onClick={() => setOpenOnly(!openOnly)} aria-pressed={openOnly} className={`chip shadow-pop-sm ${openOnly ? 'bg-grass' : ''}`}>🟢 Open now</button>
+            <button onClick={toggleEvents} aria-pressed={showEvents} title={showEvents ? 'Hide the event bubbles on the map' : 'Show the event bubbles on the map'} className={`chip shadow-pop-sm ${showEvents ? 'bg-sun' : 'opacity-70'}`}>{showEvents ? '🎟️ Events on' : '🎟️ Events off'}</button>
+            {favourites.length > 0 && <button onClick={() => setFavsOnly(!favsOnly)} aria-pressed={favsOnly} className={`chip shadow-pop-sm ${favsOnly ? 'bg-bubble' : ''}`}>♥ My favourites</button>}
             <button onClick={() => setOutside(!outside)} aria-pressed={outside} className={`chip shadow-pop-sm ${outside ? 'bg-sun' : ''}`}>☀️ Sit outside</button>
             {CATEGORY_KEYS.map(k => (
               <button key={k} onClick={() => setCat(cat === k ? null : k)} aria-pressed={cat === k} className="chip shadow-pop-sm" style={cat === k ? { background: CATEGORIES[k].color } : undefined}>
@@ -150,7 +163,7 @@ export default function MapExplorer({ places: slim, events, posts, initialSlug, 
             <div className="p-3 sm:p-4">
               <div className="mb-1.5 flex flex-wrap gap-1.5">
                 <CategoryTag category={place.category} sub={place.subcategory} /><OpenBadge hours={place.hours} now={now} />
-                {place.verified && <VerifiedTag />}{place.is_demo && <SampleTag />}{place.extra.outdoor_seating && <span className="tag bg-sun">☀️ Outdoor seats</span>}
+                {place.verified && <VerifiedTag />}{place.is_demo && <SampleTag />}{place.extra.outdoor_seating && <span className="tag bg-sun">☀️ Outdoor seats</span>}{favSet.has(place.id) && <span className="tag bg-bubble">♥ Favourite</span>}
               </div>
               <h2 className="text-2xl leading-tight font-bold">{place.name}</h2>
               {place.address && <p className="muted">{place.address}</p>}

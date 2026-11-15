@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, LISTING_KINDS } from '@/lib/config'
 import { formatDay, formatTime } from '@/lib/hours'
-import { decideClaim, moderate, syncNow } from '@/app/actions'
+import { decideClaim, moderate, syncNow, decideApplication, addAdmin, removeAdmin } from '@/app/actions'
 
 export const metadata = { title: 'Back office' }
 
@@ -17,9 +17,10 @@ function Toggle({ table, id, on, onValue, offValue, labels }: { table: string; i
 }
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  await requireAdmin()
+  const me = await requireAdmin()
   const [flash, data] = await Promise.all([searchParams, repo.adminData()])
   const pending = data.claims.filter(c => c.status === 'pending'), decided = data.claims.filter(c => c.status !== 'pending')
+  const applying = data.applications.filter(a => a.status === 'pending'), applied = data.applications.filter(a => a.status !== 'pending')
   return (
     <Shell title="Back office" intro="Verify owners, approve events and keep the neighbourhood friendly." flash={flash}>
       <dl className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -62,6 +63,52 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         {decided.length > 0 && <details className="mt-3"><summary className="cursor-pointer font-bold">Past decisions ({decided.length})</summary>
           <ul className="mt-2 space-y-1 text-sm">{decided.map(c => <li key={c.id}><span className={`tag ${c.status === 'approved' ? 'bg-grass' : 'bg-ink/10'}`}>{c.status}</span> {c.place?.name} — {c.claimant?.name}{c.admin_note && <span className="muted"> · {c.admin_note}</span>}</li>)}</ul>
         </details>}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-3 text-2xl font-bold">🛠️ Admin applications <span className="tag bg-sun align-middle">{applying.length} waiting</span></h2>
+        {applying.length === 0 ? <Empty>Nobody is waiting to become an admin.</Empty> : (
+          <ul className="space-y-4">{applying.map(a => (
+            <li key={a.id} className="card p-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
+                  <dt className="font-bold">Name</dt><dd>{a.full_name}</dd>
+                  <dt className="font-bold">Email</dt><dd>{a.email}</dd>
+                  <dt className="font-bold">Phone</dt><dd>{a.phone}</dd>
+                  <dt className="font-bold">Address</dt><dd>{a.address}</dd>
+                  <dt className="font-bold">Lived here</dt><dd>{a.years_in_area} {a.years_in_area === 1 ? 'year' : 'years'}</dd>
+                  <dt className="font-bold">Work</dt><dd>{a.occupation}</dd>
+                  <dt className="font-bold">Account</dt><dd>{a.account?.name} · {a.account?.email ?? '—'}</dd>
+                  <dt className="font-bold">Sent</dt><dd>{formatDay(a.created_at)}</dd>
+                </dl>
+                <div><p className="label">Favourite thing about the area</p><p className="rounded-xl bg-paper p-3 text-sm whitespace-pre-line">{a.favourite_thing}</p>
+                  <p className="muted mt-2 text-xs">They are asked to book a call with you after applying. Approve only once you have spoken.</p></div>
+              </div>
+              <form action={decideApplication} className="mt-4 flex flex-wrap items-end gap-2 border-t-2 border-dashed border-ink/20 pt-4">
+                <input type="hidden" name="_from" value="/admin" /><input type="hidden" name="id" value={a.id} />
+                <div className="min-w-48 flex-1"><label className="label" htmlFor={`app-note-${a.id}`}>Note <span className="muted font-normal">(the applicant sees this if declined)</span></label><input id={`app-note-${a.id}`} name="note" maxLength={500} className="input" /></div>
+                <button name="decision" value="approve" className="btn bg-grass">✓ Make admin</button><button name="decision" value="reject" className="btn btn-white">✕ Decline</button>
+              </form>
+            </li>
+          ))}</ul>
+        )}
+        {applied.length > 0 && <details className="mt-3"><summary className="cursor-pointer font-bold">Past applications ({applied.length})</summary>
+          <ul className="mt-2 space-y-1 text-sm">{applied.map(a => <li key={a.id}><span className={`tag ${a.status === 'approved' ? 'bg-grass' : 'bg-ink/10'}`}>{a.status}</span> {a.full_name} · {formatDay(a.created_at)}{a.admin_note && <span className="muted"> · {a.admin_note}</span>}</li>)}</ul>
+        </details>}
+      </section>
+
+      <section className="card mb-10 p-4">
+        <h2 className="text-xl font-bold">👥 Admins</h2>
+        <ul className="my-3 divide-y-2 divide-dashed divide-ink/15">{data.admins.map(a => (
+          <li key={a.id} className="flex flex-wrap items-center gap-2 py-2"><b>{a.name}</b><span className="muted text-sm">{a.email ?? ''}</span>
+            {a.id === me.id ? <span className="tag ml-auto bg-paper">you</span> : <form action={removeAdmin} className="ml-auto"><input type="hidden" name="_from" value="/admin" /><input type="hidden" name="id" value={a.id} /><button className="btn btn-white btn-sm">Remove admin</button></form>}</li>
+        ))}</ul>
+        <form action={addAdmin} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="_from" value="/admin" />
+          <div className="min-w-56 flex-1"><label className="label" htmlFor="admin-email">Make someone an admin</label><input id="admin-email" name="email" type="email" required className="input" placeholder="the email they sign in with" /></div>
+          <button className="btn">Add admin</button>
+        </form>
+        <p className="muted mt-2 text-sm">They need to have signed in to the site at least once. Admins can approve owners and events, hide content, and add or remove other admins.</p>
       </section>
 
       <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">

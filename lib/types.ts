@@ -31,6 +31,15 @@ export type Event = {
 export type Review = { id: string; place_id: string; user_id: string; rating: number; comment: string | null; status: 'visible' | 'hidden'; created_at: string; author: string; place?: { name: string; slug: string } }
 export type Listing = { id: string; user_id: string; kind: ListingKind; title: string; description: string; price_pence: number | null; contact: string; status: 'active' | 'closed' | 'hidden'; created_at: string; author: string }
 export type Wish = { id: string; user_id: string; title: string; description: string | null; status: 'visible' | 'hidden'; created_at: string; author: string; ups: number; downs: number; mine: -1 | 0 | 1 }
+export type AdminApplication = {
+  id: string; user_id: string; full_name: string; email: string; phone: string; address: string
+  years_in_area: number; occupation: string; favourite_thing: string
+  status: 'pending' | 'approved' | 'rejected'; admin_note: string | null; created_at: string
+  /** the account that applied, as it appears on the site */
+  account?: { name: string; email: string | null }
+}
+export type AdminUser = { id: string; name: string; email: string | null }
+
 export type Claim = {
   id: string; place_id: string; user_id: string; role: string; business_email: string; phone: string | null; evidence: string
   status: 'pending' | 'approved' | 'rejected'; admin_note: string | null; created_at: string
