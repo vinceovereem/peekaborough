@@ -66,6 +66,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           </section>
         ))}</div>
       )}
+      {events.some(e => e.source === 'Skiddle') && <p className="muted mt-6 text-sm">Some listings are provided by <a className="underline" href="https://www.skiddle.com" target="_blank" rel="noreferrer">Skiddle</a>.</p>}
 
       {!user ? <div className="mt-10"><SignInPrompt>Know about something happening? Sign in to suggest it.</SignInPrompt></div> : <details className="card mt-10 p-4">
         <summary className="font-display cursor-pointer text-xl font-bold">➕ Know about something happening? Suggest it</summary>
