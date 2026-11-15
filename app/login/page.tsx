@@ -1,10 +1,8 @@
-import Link from 'next/link'
 import CartoonMap from '@/components/CartoonMap'
 import { Flash, Logo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import { APP_NAME, HOOD, DEMO, SITE_URL } from '@/lib/config'
 import { DEMO_USERS } from '@/data/demo'
-import { GUIDES, STATIONS_GUIDE } from '@/lib/guides'
 import { demoSignIn, googleSignIn } from './actions'
 
 const FEATURES = [
@@ -60,10 +58,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <p className="muted mt-3 text-xs">One tap, no new password. Businesses use the same sign-in, then claim their place.</p>
             </form>
           )}
-          <nav aria-label="Guides" className="mt-5 border-t-2 border-dashed border-ink/20 pt-3">
-            <p className="font-bold">Read without signing in: <Link href="/guides" className="underline">guides to {HOOD.name}</Link></p>
-            <ul className="mt-1.5 space-y-1 text-sm">{[...GUIDES, STATIONS_GUIDE].map(g => <li key={g.slug}><Link href={`/guides/${g.slug}`} className="underline">{g.title}</Link></li>)}</ul>
-          </nav>
           <Footer inCard />
         </section>
       </div>
