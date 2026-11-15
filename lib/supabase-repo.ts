@@ -2,7 +2,7 @@
 // User-level calls go through the caller's session so row-level security in
 // supabase/migrations is the real gatekeeper; only the admin block uses the service role.
 import type { PostgrestError } from '@supabase/supabase-js'
-import { createClient, createAdminClient } from './supabase/server'
+import { createClient, createAdminClient, createPublicClient } from './supabase/server'
 import type { Repo } from './memory'
 import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication } from './types'
 
@@ -18,16 +18,19 @@ const tally = (r: { wish_votes: { user_id: string; value: number }[] }, userId: 
 const soon = () => new Date(Date.now() - 3 * 3600_000).toISOString()
 const MAP_COLS = 'id,slug,name,category,subcategory,address,lat,lng,hours,cover_url,extra,is_landmark,is_demo,verified,rating,review_count'
 
+async function everyPlace(db: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createPublicClient>) {
+  const all: MapPlace[] = []
+  for (let from = 0; ; from += 1000) { // the Data API returns at most 1000 rows per request
+    const page = ok(await db.from('places_view').select(MAP_COLS).eq('status', 'published').order('id').range(from, from + 999)) as MapPlace[]
+    all.push(...page)
+    if (page.length < 1000) return all
+  }
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows are untyped until `supabase gen types` is wired up */
 export const supabaseRepo: Repo = {
-  async mapPlaces() {
-    const db = await createClient(), all: MapPlace[] = []
-    for (let from = 0; ; from += 1000) { // the Data API returns at most 1000 rows per request
-      const page = ok(await db.from('places_view').select(MAP_COLS).eq('status', 'published').order('id').range(from, from + 999)) as MapPlace[]
-      all.push(...page)
-      if (page.length < 1000) return all
-    }
-  },
+  async mapPlaces() { return everyPlace(await createClient()) },
+  async guidePlaces() { return everyPlace(createPublicClient()) },
   async place(slug) { return (await (await createClient()).from('places_view').select('*').eq('slug', slug).maybeSingle()).data as Place | null },
   async placeById(id) { return (await (await createClient()).from('places_view').select('*').eq('id', id).maybeSingle()).data as Place | null },
   async searchPlaces(q) {

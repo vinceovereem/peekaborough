@@ -41,6 +41,8 @@ export const memoryRepo = {
     return db().places.filter(p => p.status === 'published').map(withRating)
       .map(({ id, slug, name, category, subcategory, address, lat, lng, hours, cover_url, extra, is_landmark, is_demo, verified, rating, review_count }) => ({ id, slug, name, category, subcategory, address, lat, lng, hours, cover_url, extra, is_landmark, is_demo, verified, rating, review_count }))
   },
+  /** The same list for the public guide pages, read without a signed-in visitor. */
+  async guidePlaces(): Promise<MapPlace[]> { return memoryRepo.mapPlaces() },
   async place(slug: string): Promise<Place | null> { const p = db().places.find(p => p.slug === slug); return p ? withRating(p) : null },
   async placeById(pid: string): Promise<Place | null> { const p = db().places.find(p => p.id === pid); return p ? withRating(p) : null },
   async searchPlaces(q: string): Promise<Place[]> {

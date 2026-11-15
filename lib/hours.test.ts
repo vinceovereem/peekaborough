@@ -8,6 +8,9 @@ import { sunTimes } from './sun.ts'
 import { toICS } from './calendar.ts'
 import { parseFeed } from './news.ts'
 import { sameName } from './links.ts'
+import { GUIDES, guideSections, metresBetween, nearStations } from './guides.ts'
+import type { MapPlace } from './types.ts'
+import { readFileSync } from 'node:fs'
 
 const closed = { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null }
 const cafe: Hours = { ...closed, mon: { open: '08:00', close: '17:00' } }
@@ -99,4 +102,24 @@ test('matching a place to its Google listing by name', () => {
   different('Union Chapel', '')
   // a slip is only forgiven in longer words
   different('Wine Rack', 'Wing Rack')
+})
+
+test('guides: every guide lists real places, in A-Z sections, and stations count what is near', () => {
+  const places = JSON.parse(readFileSync(new URL('../data/places.json', import.meta.url), 'utf8')).map((p: object) => ({ ...p, rating: null, review_count: 0 })) as MapPlace[]
+  for (const guide of GUIDES) {
+    const sections = guideSections(guide, places), listed = sections.flatMap(s => s.places)
+    assert.ok(listed.length >= 5, `${guide.slug} lists only ${listed.length} places`)
+    assert.equal(listed.length, places.filter(guide.pick).length, `${guide.slug} drops places`)
+    assert.ok(sections.every(s => s.heading !== undefined && s.heading !== 'undefined'), `${guide.slug} has an unnamed section`)
+    for (const s of sections) assert.deepEqual(s.places.map(p => p.name), [...s.places.map(p => p.name)].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })))
+  }
+  assert.ok(guideSections(GUIDES[0], places).flatMap(s => s.places).every(p => p.category === 'drink' && p.extra.outdoor_seating))
+
+  // Angel to Highbury & Islington stations are about 1.5 km apart
+  const at = (name: string) => places.find(p => p.category === 'transport' && p.name === name)!
+  const gap = metresBetween(at('Angel'), at('Highbury & Islington'))
+  assert.ok(gap > 1300 && gap < 1700, `Angel to Highbury & Islington came out as ${Math.round(gap)} m`)
+  const mk = (category: string, lat: number, lng: number) => ({ category, lat, lng, name: category, extra: {} }) as unknown as MapPlace
+  const [row] = nearStations([mk('transport', 51.5, -0.1), mk('cafe', 51.5045, -0.1), mk('cafe', 51.506, -0.1), mk('drink', 51.5, -0.1), mk('shop', 51.5, -0.1)])
+  assert.deepEqual(row.counts, { eat: 0, cafe: 1, drink: 1, groceries: 0, green: 0 }) // 500 m counts, 670 m does not, shops are not compared
 })

@@ -19,6 +19,11 @@ export async function createClient() {
   })
 }
 
+/** Signed-out client for pages anyone may read: no cookies, so those pages can be built ahead of time. Row-level security applies. */
+export function createPublicClient() {
+  return createPlainClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+}
+
 /** Service-role client: bypasses row-level security. Server-only, and only after requireAdmin()/owner checks. */
 export function createAdminClient() {
   return createPlainClient(URL, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false, autoRefreshToken: false } })
