@@ -34,18 +34,15 @@ async function skiddle(key: string): Promise<ExternalEvent[]> {
     found.push(...batch)
     if (batch.length < 100) break
   }
-  // Whether tickets are left is only in an event's own record: `ticketStatus` is "0" when Skiddle has none and "2" when
-  // they are on sale (compared with skiddle.com on 16 Nov 2026). So it is one more call per ticketed event inside the
-  // borough. ponytail: about 250 calls a day, eight at a time; a call that fails leaves that event unmarked.
+  // Whether tickets are left is only in an event's own record: `ticketStatus` is "0" when Skiddle has none ("2" and "3"
+  // are on sale). Compared with skiddle.com on 16 Nov 2026: all three events with "0" were sold out or waiting-list
+  // only. So it is one more call per ticketed event inside the borough.
+  // ponytail: about 180 calls a day, eight at a time; a call that fails leaves that event unmarked.
   const local = found.filter(e => e?.id && e.tickets && e.venue?.latitude && inArea(+e.venue.longitude, +e.venue.latitude) && Date.parse(e.startdate) > Date.now())
-  const none = new Set<string>(), seen: Record<string, string[]> = {}
+  const none = new Set<string>()
   for (let i = 0; i < local.length; i += 8) await Promise.all(local.slice(i, i + 8).map(async e => {
-    const status = String((await get(`https://www.skiddle.com/api/v1/events/${e.id}/?api_key=${key}`).catch(() => null))?.results?.ticketStatus)
-    ;(seen[status] ??= []).push(e.link)
-    if (status === '0') none.add(e.id)
+    if ((await get(`https://www.skiddle.com/api/v1/events/${e.id}/?api_key=${key}`).catch(() => null))?.results?.ticketStatus === '0') none.add(e.id)
   }))
-  // temporary: how many events had each status, with a few pages of each to check the reading above against
-  console.log('Skiddle ticket status', JSON.stringify(Object.entries(seen).map(([status, links]) => ({ status, events: links.length, pages: status === '2' ? links.slice(0, 2) : links.slice(0, 8) }))).slice(0, 3900))
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
