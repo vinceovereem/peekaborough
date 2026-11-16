@@ -7,6 +7,7 @@ import rawPlaces from '@/data/places.json'
 import { DEMO_USERS, realEvents } from '@/data/demo'
 import type { Place, PlaceIndexRow, PlacePatch, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser, BoroughTally } from './types'
 import type { ExternalEvent } from './sources'
+import { tallyBoroughs } from './poll'
 
 type Row = Omit<Place, 'rating' | 'review_count'>
 type WishRow = Omit<Wish, 'author' | 'ups' | 'downs' | 'mine'> & { votes: Record<string, 1 | -1> }
@@ -16,7 +17,7 @@ function init() {
     owners: new Set<string>(), menu: [] as MenuItem[], posts: [] as Post[], reviews: [] as Review[],
     events: realEvents(), listings: [] as Listing[], wishes: [] as WishRow[], claims: [] as Claim[],
     names: Object.fromEntries(DEMO_USERS.map(u => [u.id, u.name])) as Record<string, string>,
-    favorites: new Set<string>(), applications: [] as AdminApplication[], boroughVotes: [] as string[],
+    favorites: new Set<string>(), applications: [] as AdminApplication[], boroughVotes: [] as { borough: string; user_id: string | null }[],
   }
 }
 const g = globalThis as unknown as { __patch?: ReturnType<typeof init> }
@@ -34,12 +35,6 @@ const toWish = (w: WishRow, userId: string | null): Wish =>
   ({ id: w.id, user_id: w.user_id, title: w.title, description: w.description, status: w.status, created_at: w.created_at, author: db().names[w.user_id] ?? 'Neighbour',
     ups: Object.values(w.votes).filter(v => v === 1).length, downs: Object.values(w.votes).filter(v => v === -1).length, mine: (userId && w.votes[userId]) || 0 })
 const toClaim = (c: Claim): Claim => ({ ...c, place: placeRef(c.place_id), claimant: { name: db().names[c.user_id] ?? 'Neighbour', email: DEMO_USERS.find(u => u.id === c.user_id)?.email ?? null } })
-/** Votes per borough, most first; typed-in names count with the listed ones regardless of case. */
-export function tallyBoroughs(votes: string[]): BoroughTally[] {
-  const n = new Map<string, BoroughTally>()
-  for (const v of votes) { const k = v.trim().toLowerCase(); const t = n.get(k) ?? { borough: v.trim(), votes: 0 }; t.votes++; n.set(k, t) }
-  return [...n.values()].sort((a, b) => b.votes - a.votes || a.borough.localeCompare(b.borough))
-}
 const upcoming = (e: Event) => new Date(e.ends_at ?? e.starts_at).getTime() > Date.now() - 3 * 3600_000
 
 export const memoryRepo = {
@@ -140,8 +135,15 @@ export const memoryRepo = {
   /** Returns a public URL, or null when photo storage isn't available (demo mode). */
   async uploadCover(placeId: string, file: File): Promise<string | null> { void placeId; void file; return null },
 
-  /** One vote in the "which borough next?" poll. Anyone may vote; the caller has validated the name. */
-  async addBoroughVote(borough: string) { db().boroughVotes.push(borough) },
+  /** The borough this person picked in the "which borough next?" poll, if they have voted. */
+  async myBoroughVote(userId: string): Promise<string | null> { return db().boroughVotes.find(v => v.user_id === userId)?.borough ?? null },
+  /** One vote per person; the caller has validated the name. Returns false if they had already voted. */
+  async addBoroughVote(userId: string, borough: string): Promise<boolean> {
+    if (db().boroughVotes.some(v => v.user_id === userId)) return false
+    db().boroughVotes.push({ borough, user_id: userId }); return true
+  },
+  /** Counts signed-in votes only; anonymous ones from before votes needed an account are ignored. */
+  async boroughTally(): Promise<BoroughTally[]> { return tallyBoroughs(db().boroughVotes.filter(v => v.user_id).map(v => v.borough)) },
 
   // --- admin (callers must check requireAdmin first) ---
   async adminData(): Promise<{ claims: Claim[]; pendingEvents: Event[]; reviews: Review[]; listings: Listing[]; wishes: Wish[]; applications: AdminApplication[]; admins: AdminUser[]; boroughs: BoroughTally[]; counts: Record<'places' | 'verified' | 'reviews' | 'events' | 'listings' | 'wishes', number> }> {
@@ -154,7 +156,7 @@ export const memoryRepo = {
       wishes: newest(d.wishes).slice(0, 30).map(w => toWish(w, null)),
       applications: newest(d.applications).map(a => ({ ...a, account: { name: d.names[a.user_id] ?? 'Neighbour', email: null } })),
       admins: DEMO_USERS.filter(u => u.is_admin).map(u => ({ id: u.id, name: u.name, email: u.email })),
-      boroughs: tallyBoroughs(d.boroughVotes),
+      boroughs: await memoryRepo.boroughTally(),
       counts: { places: d.places.length, verified: d.places.filter(p => p.verified).length, reviews: d.reviews.length, events: d.events.filter(e => e.status === 'published' && upcoming(e)).length, listings: d.listings.filter(l => l.status === 'active').length, wishes: d.wishes.length },
     }
   },

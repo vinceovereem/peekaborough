@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "mkdir -p public/maplibre && cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/maplibre/",
-    "test": "node --test lib/hours.test.ts lib/theatres.test.ts lib/osm.test.ts && node scripts/check-sql.mjs",
+    "test": "node --test lib/hours.test.ts lib/theatres.test.ts lib/poll.test.ts lib/osm.test.ts && node scripts/check-sql.mjs",
     "typecheck": "tsc --noEmit",
     "seed:sql": "node scripts/make-seed.mjs"
   },

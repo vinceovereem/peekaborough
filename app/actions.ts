@@ -1,8 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
-import { requireUser, requireAdmin } from '@/lib/auth'
+import { getUser, requireUser, requireAdmin } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { syncEvents } from '@/lib/sources'
 import { syncPlaces } from '@/lib/place-sync'
@@ -122,21 +121,17 @@ export async function submitClaim(fd: FormData) {
   })
 }
 
-// ---------- anyone ----------
 export type PollState = { voted?: string; error?: string }
-/** The footer's "which borough next?" poll. No account needed; a cookie stops the same browser voting twice. */
+/** The footer's "which borough next?" poll: signed-in neighbours only, one vote each (the database enforces it). */
 export async function voteForBorough(_: PollState, fd: FormData): Promise<PollState> {
+  const user = await getUser()
+  if (!user) return { error: 'Sign in to vote.' }
   const choice = String(fd.get('borough') ?? ''), other = String(fd.get('other') ?? '').trim().replace(/\s+/g, ' ')
   const borough = choice === 'other' ? other : (LONDON_BOROUGHS as readonly string[]).includes(choice) ? choice : ''
   if (choice === 'other' && (borough.length < 2 || borough.length > 60)) return { error: 'Type a place name (2 to 60 characters).' }
   if (!borough) return { error: 'Pick a borough first.' }
-  const jar = await cookies()
-  // ponytail: one vote per browser, not per person. Good enough for a show of hands; add a captcha if it gets gamed.
-  if (jar.has('borough_vote')) return { voted: jar.get('borough_vote')!.value }
-  try { await repo.addBoroughVote(borough) }
+  try { return { voted: (await repo.addBoroughVote(user.id, borough)) ? borough : (await repo.myBoroughVote(user.id)) ?? borough } }
   catch (e) { console.error(e); return { error: "That didn't save — please try again." } }
-  jar.set('borough_vote', borough, { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', path: '/' })
-  return { voted: borough }
 }
 
 // ---------- verified owners ----------
