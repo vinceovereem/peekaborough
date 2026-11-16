@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
   if (signedIn === isPublic && pathname !== '/auth/callback') {
     const url = request.nextUrl.clone()
     url.pathname = signedIn ? '/' : '/login'
-    url.search = ''
+    url.search = !signedIn && pathname === '/apply' ? '?next=/apply' : '' // the sign-in page then says why, and returns them here
     return NextResponse.redirect(url)
   }
   return response
