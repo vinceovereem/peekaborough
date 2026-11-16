@@ -8,7 +8,7 @@ export default function Privacy() {
   return (
     <LegalPage title="Privacy notice" updated="16 November 2026">
       <h2>Who we are</h2>
-      <p>{APP_NAME} is a neighbourhood guide for {HOOD.name}, run by {OPERATOR.name} (company no. {OPERATOR.number}, registered office {OPERATOR.office}), which is the data controller. For anything about your data, write to {mail}.</p>
+      <p>{APP_NAME} is a neighbourhood guide for {HOOD.name}. For anything about your data, write to {mail}.</p>
 
       <h2>What we collect</h2>
       <ul>
