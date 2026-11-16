@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { APP_NAME } from '@/lib/config'
+import { APP_NAME, OPERATOR } from '@/lib/config'
 
 /** Site-wide footnote: the legal pages, how to get involved, and where the data comes from. */
 export default function Footer({ inCard }: { inCard?: boolean }) {
@@ -13,6 +13,7 @@ export default function Footer({ inCard }: { inCard?: boolean }) {
         <Link href="/apply" className="underline">Apply to be an admin</Link>
       </nav>
       <p className="muted mt-1.5 text-xs">© {new Date().getFullYear()} {APP_NAME}. Place data © OpenStreetMap contributors. Map © OpenFreeMap. Station information from TfL.</p>
+      <p className="muted mt-1 text-xs">{APP_NAME} is a product of {OPERATOR.name}, registered in England &amp; Wales, company no. {OPERATOR.number}.</p>
     </footer>
   )
 }

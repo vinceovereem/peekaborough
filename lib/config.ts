@@ -66,10 +66,15 @@ export type ListingKind = keyof typeof LISTING_KINDS
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
   ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000')
 
-/** Who runs the site; shown on the legal pages. */
-export const OPERATOR = { name: 'Vincent van Overeem', email: 'vincent.vanovereem@gmail.com' }
+/** The company behind the site; shown in the footer and on the legal pages. */
+export const OPERATOR = {
+  name: 'Over the Eem Services Ltd',
+  number: '17225231',
+  office: '58 Southstand Apartments, Highbury Stadium Square, London, N5 1EY',
+  email: 'peekaborough@v-cents.com',
+}
 /** Where would-be admins book a call after applying. */
-export const ADMIN_CALL_URL = 'https://calendar.app.google/B39DmXdXRpv8ZZzt8'
+export const ADMIN_CALL_URL = 'https://calendar.app.google/Ft5quHyq8kgWm1zE7'
 
 // Demo mode = no Supabase keys: data lives in memory, sign-in is one click. See README.
 export const DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL
