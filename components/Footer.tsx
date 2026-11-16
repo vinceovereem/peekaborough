@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { APP_NAME } from '@/lib/config'
+import BoroughPoll from './BoroughPoll'
 
 /** Site-wide footnote: the legal pages, how to get involved, and where the data comes from. */
 export default function Footer({ inCard }: { inCard?: boolean }) {
@@ -12,6 +13,7 @@ export default function Footer({ inCard }: { inCard?: boolean }) {
         <Link href="/security" className="underline">Security</Link>
         <Link href="/apply" className="underline">Apply to be an admin</Link>
       </nav>
+      <BoroughPoll />
       <p className="muted mt-1.5 text-xs">© {new Date().getFullYear()} {APP_NAME}. Place data © OpenStreetMap contributors. Map © OpenFreeMap. Station information from TfL.</p>
     </footer>
   )

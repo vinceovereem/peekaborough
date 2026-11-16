@@ -36,7 +36,7 @@ export default function Privacy() {
       </ul>
 
       <h2>Cookies</h2>
-      <p>We use only the cookies needed to keep you signed in. There are no advertising or tracking cookies, so there is no cookie banner.</p>
+      <p>We use only the cookies needed to keep you signed in, and one that remembers you have already voted in the “which borough next?” poll. There are no advertising or tracking cookies, so there is no cookie banner.</p>
 
       <h2>Who helps us run the site</h2>
       <ul>

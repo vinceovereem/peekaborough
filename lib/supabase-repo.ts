@@ -3,7 +3,7 @@
 // supabase/migrations is the real gatekeeper; only the admin block uses the service role.
 import type { PostgrestError } from '@supabase/supabase-js'
 import { createClient, createAdminClient, createPublicClient } from './supabase/server'
-import type { Repo } from './memory'
+import { tallyBoroughs, type Repo } from './memory'
 import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication } from './types'
 
 function ok<T>({ data, error }: { data: T; error: PostgrestError | null }): NonNullable<T> {
@@ -137,6 +137,10 @@ export const supabaseRepo: Repo = {
     return storage.getPublicUrl(path).data.publicUrl
   },
 
+  async addBoroughVote(borough) {
+    // Anyone may vote, signed in or not, so the table has no public grants and the server writes it.
+    ok(await createAdminClient().from('borough_votes').insert({ borough }).select('id'))
+  },
   async adminData() {
     const db = createAdminClient()
     const count = async (table: string, filter?: [string, string | boolean]) => {
@@ -144,7 +148,7 @@ export const supabaseRepo: Repo = {
       if (filter) q = q.eq(filter[0], filter[1])
       return (await q).count ?? 0
     }
-    const [claims, pendingEvents, reviews, listings, wishes, applications, adminRows, emails] = await Promise.all([
+    const [claims, pendingEvents, reviews, listings, wishes, applications, adminRows, emails, boroughs] = await Promise.all([
       db.from('claims').select('*, place:places(name,slug,address,website), profiles(display_name)').order('created_at', { ascending: false }).limit(100),
       db.from('events').select('*').eq('status', 'pending').order('starts_at'),
       db.from('reviews').select('*, profiles(display_name), place:places(name,slug)').order('created_at', { ascending: false }).limit(30),
@@ -153,6 +157,7 @@ export const supabaseRepo: Repo = {
       db.from('admin_applications').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(100),
       db.from('profiles').select('id, display_name').eq('is_admin', true).order('created_at'),
       db.auth.admin.listUsers({ perPage: 1000 }), // ponytail: fine below 1000 users; look claimants up one by one after that
+      db.from('borough_votes').select('borough').limit(10000), // ponytail: tallied here; a group-by view once votes pass 10k
     ])
     const emailOf = new Map(emails.data?.users.map(u => [u.id, u.email ?? null]))
     return {
@@ -163,6 +168,7 @@ export const supabaseRepo: Repo = {
       wishes: ok(wishes).map((r: any) => ({ ...r, author: author(r), ...tally(r, null) })) as Wish[],
       applications: ok(applications).map((a: any) => ({ ...a, account: { name: author(a), email: emailOf.get(a.user_id) ?? null } })) as AdminApplication[],
       admins: ok(adminRows).map((p: any) => ({ id: p.id, name: p.display_name, email: emailOf.get(p.id) ?? null })),
+      boroughs: tallyBoroughs(ok(boroughs).map((r: any) => r.borough)),
       counts: {
         places: await count('places'), verified: await count('places', ['verified', true]), reviews: await count('reviews'),
         events: await count('events', ['status', 'published']), listings: await count('listings', ['status', 'active']), wishes: await count('wishes'),

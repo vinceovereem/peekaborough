@@ -108,4 +108,12 @@ await denied(A, `select 1 from public.admin_applications`, "read someone else's 
 await denied(null, `select 1 from public.admin_applications`, 'anon cannot read applications')
 await denied(B, `update public.admin_applications set status = 'approved' where user_id = '${B}'`, 'approve your own application')
 
-console.log('✔ migrations + seed apply cleanly; 54 access rules hold')
+// --- borough poll (third migration): only the server, with the service role, touches it ---
+await denied(null, `insert into public.borough_votes (borough) values ('Camden') returning id`, 'anon votes straight into the table')
+await denied(A, `insert into public.borough_votes (borough) values ('Camden') returning id`, 'a member votes straight into the table')
+await db.exec(`insert into public.borough_votes (borough) values ('Camden')`) // what the server does
+await denied(null, `select 1 from public.borough_votes`, 'anon reads the votes')
+await denied(A, `select 1 from public.borough_votes`, 'a member reads the votes')
+await assert.rejects(db.exec(`insert into public.borough_votes (borough) values (' ')`), 'a blank name is refused')
+
+console.log('✔ migrations + seed apply cleanly; 60 access rules hold')

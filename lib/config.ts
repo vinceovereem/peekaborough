@@ -66,6 +66,14 @@ export type ListingKind = keyof typeof LISTING_KINDS
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
   ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000')
 
+/** London's 32 boroughs and the City, for the "which borough next?" poll in the footer. */
+export const LONDON_BOROUGHS = [
+  'Barking and Dagenham', 'Barnet', 'Bexley', 'Brent', 'Bromley', 'Camden', 'City of London', 'Croydon', 'Ealing', 'Enfield',
+  'Greenwich', 'Hackney', 'Hammersmith and Fulham', 'Haringey', 'Harrow', 'Havering', 'Hillingdon', 'Hounslow', 'Islington',
+  'Kensington and Chelsea', 'Kingston upon Thames', 'Lambeth', 'Lewisham', 'Merton', 'Newham', 'Redbridge', 'Richmond upon Thames',
+  'Southwark', 'Sutton', 'Tower Hamlets', 'Waltham Forest', 'Wandsworth', 'Westminster',
+] as const
+
 /** The site's contact address; shown on the legal pages. */
 export const OPERATOR = { email: 'peekaborough@v-cents.com' }
 /** Where would-be admins book a call after applying. */
