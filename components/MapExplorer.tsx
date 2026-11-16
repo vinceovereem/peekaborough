@@ -5,7 +5,7 @@ import CartoonMap, { type MapPin } from './CartoonMap'
 import PlacePicture from './PlacePicture'
 import AskPanel from './AskPanel'
 import { Stars, CategoryIcon, CategoryTag, OpenBadge, VerifiedTag, SampleTag, EventTags, soldOutLabel, LinePills } from './ui'
-import { CATEGORIES, CATEGORY_KEYS, EVENT_KINDS, dogFriendly, laptopFriendly, type Category } from '@/lib/config'
+import { CATEGORIES, CATEGORY_KEYS, EVENT_KINDS, dogFriendly, laptopFriendly, searchKey, type Category } from '@/lib/config'
 import { isOpenNow, formatDay, formatTime, formatPrices, dayKey } from '@/lib/hours'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
 import type { MapPlace, Event, Post } from '@/lib/types'
@@ -43,9 +43,9 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
   const [tools, setTools] = useState(true) // search + filters; hide them for an uncluttered map
 
   const shown = useMemo(() => {
-    const s = q.trim().toLowerCase()
+    const s = searchKey(q)
     return places.filter(p => (!cat || p.category === cat)
-      && (!s || p.name.toLowerCase().includes(s) || (p.subcategory ?? '').toLowerCase().includes(s))
+      && (!s || searchKey(p.name).includes(s) || searchKey(p.subcategory ?? '').includes(s))
       && (!openOnly || isOpenNow(p.hours, now))
       && (!outside || p.extra.outdoor_seating)
       && (!dogs || dogFriendly(p))

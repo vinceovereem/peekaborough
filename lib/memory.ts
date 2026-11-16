@@ -8,6 +8,7 @@ import { DEMO_USERS, realEvents } from '@/data/demo'
 import type { Place, PlaceIndexRow, PlacePatch, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser, BoroughTally } from './types'
 import type { ExternalEvent } from './sources'
 import { tallyBoroughs } from './poll'
+import { searchKey } from './config'
 
 type Row = Omit<Place, 'rating' | 'review_count'>
 type WishRow = Omit<Wish, 'author' | 'ups' | 'downs' | 'mine'> & { votes: Record<string, 1 | -1> }
@@ -47,8 +48,8 @@ export const memoryRepo = {
   async place(slug: string): Promise<Place | null> { const p = db().places.find(p => p.slug === slug); return p ? withRating(p) : null },
   async placeById(pid: string): Promise<Place | null> { const p = db().places.find(p => p.id === pid); return p ? withRating(p) : null },
   async searchPlaces(q: string): Promise<Place[]> {
-    const s = q.trim().toLowerCase()
-    return s.length < 2 ? [] : db().places.filter(p => p.status === 'published' && p.name.toLowerCase().includes(s)).slice(0, 12).map(withRating)
+    const s = searchKey(q)
+    return s.length < 2 ? [] : db().places.filter(p => p.status === 'published' && searchKey(p.name).includes(s)).slice(0, 12).map(withRating)
   },
   async menu(placeId: string): Promise<MenuItem[]> { return db().menu.filter(m => m.place_id === placeId).sort((a, b) => a.position - b.position) },
   async posts(placeId: string): Promise<Post[]> { return newest(db().posts.filter(p => p.place_id === placeId)) },
