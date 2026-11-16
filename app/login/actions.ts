@@ -19,8 +19,10 @@ export async function skipSignIn() {
   redirect('/')
 }
 
-export async function googleSignIn() {
+export async function googleSignIn(formData: FormData) {
   if (DEMO) redirect('/login?error=Signing in is not available on this preview yet — you can still look around.')
+  // a cookie, not a query string, so the return address Google is given stays exactly the registered one
+  if (formData.get('next') === '/apply') (await cookies()).set('after_sign_in', '/apply', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 })
   const h = await headers()
   const origin = h.get('origin') ?? `https://${h.get('host')}`
   const supabase = await createClient()
