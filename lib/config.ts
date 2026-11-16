@@ -74,7 +74,7 @@ export const OPERATOR = {
   email: 'peekaborough@v-cents.com',
 }
 /** Where would-be admins book a call after applying. */
-export const ADMIN_CALL_URL = 'https://calendar.app.google/B39DmXdXRpv8ZZzt8'
+export const ADMIN_CALL_URL = 'https://calendar.app.google/Ft5quHyq8kgWm1zE7'
 
 // Demo mode = no Supabase keys: data lives in memory, sign-in is one click. See README.
 export const DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL
