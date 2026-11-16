@@ -35,7 +35,7 @@ export const supabaseRepo: Repo = {
   async place(slug) { return (await (await createClient()).from('places_view').select('*').eq('slug', slug).maybeSingle()).data as Place | null },
   async placeById(id) { return (await (await createClient()).from('places_view').select('*').eq('id', id).maybeSingle()).data as Place | null },
   async searchPlaces(q) {
-    const s = q.trim().replace(/[%_,()]/g, ' ')
+    const s = q.trim().replace(/[%_,()]/g, ' ').replace(/^the\s+/i, '').replace(/\s+(and|&)\s+|['’]/gi, '%') // "hope and anchor" finds "Hope & Anchor"
     if (s.length < 2) return []
     return ok(await (await createClient()).from('places_view').select('*').eq('status', 'published').ilike('name', `%${s}%`).limit(12)) as Place[]
   },

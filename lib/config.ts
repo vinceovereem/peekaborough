@@ -42,6 +42,9 @@ export const CATEGORIES = {
 export type Category = keyof typeof CATEGORIES
 
 /** Dogs welcome, by OpenStreetMap or the venue's own website (lib/place-sync.ts). */
+/** Folds a name or search into a plain form so "the hope and anchor" finds "Hope & Anchor" and "finks" finds "Fink's". */
+export const searchKey = (s: string) => ` ${s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f'’.]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ')} `.replace(/ the /g, ' ').replace(/ +/g, ' ').trim()
+
 export const dogFriendly = (p: { extra: { dogs?: boolean } }) => p.extra.dogs === true
 /** A café whose website welcomes laptops, or one with customer Wi-Fi that doesn't ban them. */
 export const laptopFriendly = (p: { category: Category; extra: { laptops?: boolean; wifi?: boolean } }) =>
