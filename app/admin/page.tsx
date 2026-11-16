@@ -112,7 +112,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </section>
 
       <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">
-        <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🔌 Automatic event sources</h2><p className="muted text-sm">Skiddle and Ticketmaster listings inside the borough are fetched every morning. Residents and owners can still add events by hand.</p></div>
+        <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🔌 Automatic event sources</h2><p className="muted text-sm">Skiddle and Ticketmaster listings inside the borough, and the programmes of Park Theatre, King&apos;s Head Theatre and Little Angel Theatre, are fetched every morning. Residents and owners can still add events by hand.</p></div>
         <form action={syncNow}><button className="btn btn-white">Sync now</button></form>
       </section>
 

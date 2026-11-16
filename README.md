@@ -62,6 +62,7 @@ The aim is for the guide to fill itself in. Each source is used the way its owne
 | OpenStreetMap, TfL, Wikimedia Commons, openfootball | Open data, pulled by the import scripts |
 | Islington Gazette, Islington Local Guide, r/islington | Their RSS feeds: headline + link on the News page, refreshed every 15 minutes |
 | Skiddle, Ticketmaster | Official event APIs (`lib/sources.ts`). Free keys in `.env.example`; a daily cron (`vercel.json` → `/api/sync`) and a "Sync now" button in the back office pull events inside the borough |
+| Park Theatre, King's Head Theatre, Little Angel Theatre | Each theatre's own box-office feed (Spektrix open JSON, no key; `lib/theatres.ts`): show title, date and time only, linking to the theatre's what's-on page. No agreement with the theatres yet — worth a courtesy email |
 | Eventbrite | No public search API any more — organisers add their events (or Eventbrite link) through "Suggest an event" |
 | Time Out, Visit London, The Standard, Islington Life | No feeds: linked from the News page, not copied |
 | X / Twitter | Paid API only; not connected |
@@ -70,8 +71,13 @@ What it deliberately does not do is copy articles, guides or listings from other
 belongs to them; the route to using more of it is a partnership (Islington Local Guide would be the
 obvious first conversation).
 
-Not yet tested with real keys: the Skiddle and Ticketmaster connectors follow their published docs
-but no live response has been through them.
+Skiddle and the theatre feeds have run against the real services. Ticketmaster follows its published
+docs but no live response has been through it yet.
+
+Looked at and not connectable (November 2026): SeatGeek (US and Canada only), DICE, Resident Advisor,
+See Tickets and Songkick (no public API), Meetup (paid API), Data Thistle (licensed), Kings Place (its
+box-office feed mixes concerts with restaurant bookings), Islington Guided Walks (its calendar feed has
+no meeting-point locations), Islington Assembly Hall (feed has dates but no times).
 
 To switch the automatic events on, three settings go on the Vercel project (Production):
 `TICKETMASTER_API_KEY` (developer.ticketmaster.com), `SKIDDLE_API_KEY` (skiddle.com/api/join.php) and

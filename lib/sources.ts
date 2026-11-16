@@ -1,10 +1,11 @@
-// Automatic event listings from ticketing platforms' official APIs. Each connector is off until
-// its key is set; `syncEvents` runs daily (vercel.json cron -> /api/sync) and from the admin page.
+// Automatic event listings from ticketing platforms' official APIs and from theatres' own feeds. A keyed
+// connector is off until its key is set; `syncEvents` runs daily (vercel.json cron -> /api/sync) and from the admin page.
 //
 // Eventbrite is not here on purpose: it withdrew its public event-search API, so the only supported
 // way to list Eventbrite events is for the organiser to add them (or their Eventbrite link) by hand.
 import { APP_NAME, SITE_URL, HOOD, inArea, type EventKind } from './config'
 import { repo } from './repo'
+import { THEATRES, performanceDays, type Theatre } from './theatres'
 import type { Event } from './types'
 
 export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'> & { source: string; source_id: string }
@@ -62,15 +63,22 @@ async function ticketmaster(key: string): Promise<ExternalEvent[]> {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+/** A theatre's own box-office feed (see lib/theatres.ts). */
+async function theatre(t: Theatre): Promise<ExternalEvent[]> {
+  const base = `https://system.spektrix.com/${t.client}/api/v3`, today = new Date().toISOString().slice(0, 10)
+  const [shows, performances, plans] = await Promise.all([get(`${base}/events?instanceStart_from=${today}`), get(`${base}/instances?startFrom=${today}`), get(`${base}/plans`)])
+  return performanceDays(t, shows, performances, plans)
+}
+
 const CONNECTORS = [
   { name: 'Skiddle', key: process.env.SKIDDLE_API_KEY, run: skiddle },
   { name: 'Ticketmaster', key: process.env.TICKETMASTER_API_KEY, run: ticketmaster },
+  ...THEATRES.map(t => ({ name: t.source, key: 'open feed, no key', run: () => theatre(t) })),
 ]
 
 /** Pulls every configured source, keeps upcoming events inside the borough, and saves them. */
 export async function syncEvents(): Promise<string> {
   const active = CONNECTORS.filter(c => c.key)
-  if (!active.length) return 'No event sources are connected yet — add SKIDDLE_API_KEY or TICKETMASTER_API_KEY.'
   const report: string[] = []
   for (const c of active) {
     try {
