@@ -38,12 +38,13 @@ add is temporary: it resets on restart.
 
 | | Source |
 |---|---|
-| ~3,520 places inside the borough and those two parks (name, category, address, phone, website; hours for about 1 in 6) | OpenStreetMap, via `scripts/import-osm.mjs` |
+| ~3,470 places inside the borough and those two parks (name, category, address, phone, website; hours for about 1 in 6) | OpenStreetMap, via `scripts/import-osm.mjs` |
 | The borough boundary | OpenStreetMap's official outline of the London Borough of Islington (`data/area.json`), plus the outlines of Finsbury Park and Clissold Park, which sit just over the border (`EXTRA_PARKS` in the import script) |
 | Local headlines on the News page | RSS feeds: Islington Gazette, Islington Local Guide, r/islington — headline and link only |
 | Station lines, and live line status on station pages | TfL open API |
 | Photos for ~150 landmarks, stations, theatres and churches | Wikimedia Commons (credited on the page) |
-| Outdoor seating flag (~260 places) | OpenStreetMap |
+| Outdoor seating flag (~260 places), dogs allowed, customer Wi-Fi | OpenStreetMap |
+| "Dogs welcome" / "Laptop friendly" from what the venue says itself | Cafés', pubs' and restaurants' own home pages, read about once a month (`lib/place-sync.ts`); the page is kept as the source |
 | Arsenal home fixtures | openfootball, via `scripts/import-fixtures.mjs` (kick-off times move for TV) |
 | Highbury Fields and Finsbury Park parkruns | parkrun: free, every Saturday at 9am |
 | Map | OpenFreeMap vector tiles (no API key), restyled in `lib/map-style.ts`. Homes are grey; a building is coloured only if there's a venue in it |
@@ -60,6 +61,8 @@ The aim is for the guide to fill itself in. Each source is used the way its owne
 | Source | How it's connected |
 |---|---|
 | OpenStreetMap, TfL, Wikimedia Commons, openfootball | Open data, pulled by the import scripts |
+| OpenStreetMap (ongoing) and venues' websites | A weekly cron (`vercel.json` → `/api/sync/places`) and a "Refresh places" button in the back office add new venues, update places no owner has claimed, hide ones that have gone from OpenStreetMap, and read websites for dogs/laptops. Claimed places keep their owner's edits |
+| Google Maps | Ratings, reviews and a photo on place pages when `GOOGLE_MAPS_API_KEY` is set. Google's terms allow storing only the place ID and forbid Google content on a non-Google map, so Google ratings can't go on the pins, a rating filter or the dogs/laptops tags |
 | Islington Gazette, Islington Local Guide, r/islington | Their RSS feeds: headline + link on the News page, refreshed every 15 minutes |
 | Skiddle, Ticketmaster | Official event APIs (`lib/sources.ts`). Skiddle also gives a price range and, from one extra call per ticketed event in the borough, whether it has tickets left. Free keys in `.env.example`; a daily cron (`vercel.json` → `/api/sync`) and a "Sync now" button in the back office pull events inside the borough |
 | Park Theatre, King's Head Theatre, Little Angel Theatre | Each theatre's own box-office feed (Spektrix open JSON, no key; `lib/theatres.ts`): show title, date and time, the facts filed with the show (genre, length, age guidance), ticket prices and whether any seats are left — not the theatre's own description. Seats left is one small call per performance (about 300 a day across the three). Links go to the theatre's what's-on page. No agreement with the theatres yet — worth a courtesy email |

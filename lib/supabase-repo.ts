@@ -127,6 +127,18 @@ export const supabaseRepo: Repo = {
     if (list.length) ok(await createAdminClient().from('events').upsert(list.map(e => ({ ...e, status: 'published' })), { onConflict: 'source,source_id' }).select('id'))
   },
   async deleteEvent(placeId, eventId) { ok(await (await createClient()).from('events').delete().eq('id', eventId).eq('place_id', placeId).select('id')) },
+  async placeIndex() {
+    const db = createAdminClient(), all: Awaited<ReturnType<Repo['placeIndex']>> = []
+    for (let from = 0; ; from += 1000) {
+      const page = ok(await db.from('places').select('id,osm_id,slug,name,category,subcategory,description,address,lat,lng,phone,website,booking_url,hours,hours_note,extra,is_landmark,verified,status').order('id').range(from, from + 999)) as typeof all
+      all.push(...page)
+      if (page.length < 1000) return all
+    }
+  },
+  async addPlaces(rows) {
+    for (let i = 0; i < rows.length; i += 200) ok(await createAdminClient().from('places').upsert(rows.slice(i, i + 200), { onConflict: 'osm_id', ignoreDuplicates: true }).select('id'))
+  },
+  async patchPlace(placeId, patch) { ok(await createAdminClient().from('places').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', placeId).select('id')) },
   async setGooglePlaceId(placeId, googleId) { ok(await createAdminClient().from('places').update({ google_place_id: googleId }).eq('id', placeId).select('id')) },
   async uploadCover(placeId, file) {
     // Caller has verified ownership. The bucket is public-read; only the service role writes to it.

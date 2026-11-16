@@ -6,7 +6,9 @@ import { repo } from '@/lib/repo'
 import { EVENT_KINDS, LISTING_KINDS } from '@/lib/config'
 import { formatDay, formatTime } from '@/lib/hours'
 import SubmitButton from '@/components/SubmitButton'
-import { decideClaim, moderate, syncNow, decideApplication, addAdmin, removeAdmin } from '@/app/actions'
+
+export const maxDuration = 300 // "Refresh places" reads venue websites for up to about 3 minutes
+import { decideClaim, moderate, syncNow, syncPlacesNow, decideApplication, addAdmin, removeAdmin } from '@/app/actions'
 
 export const metadata = { title: 'Back office' }
 
@@ -125,6 +127,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">
         <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🔌 Automatic event sources</h2><p className="muted text-sm">Skiddle and Ticketmaster listings inside the borough, and the programmes of Park Theatre, King&apos;s Head Theatre and Little Angel Theatre, are fetched every morning. Residents and owners can still add events by hand.</p></div>
         <form action={syncNow}><SubmitButton className="btn btn-white" busy="Syncing… about a minute">Sync now</SubmitButton></form>
+      </section>
+      <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">
+        <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🗺️ Places</h2><p className="muted text-sm">Every Monday new venues are added from OpenStreetMap, and cafés, pubs and restaurants have their websites read (each about once a month) for whether dogs and laptops are welcome.</p></div>
+        <form action={syncPlacesNow}><SubmitButton className="btn btn-white" busy="Refreshing… up to 4 minutes">Refresh places</SubmitButton></form>
       </section>
 
       <section className="mb-10">

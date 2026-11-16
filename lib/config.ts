@@ -40,6 +40,12 @@ export const CATEGORIES = {
   transport: { label: 'Transport', emoji: '🚇', color: '#97aedb' },
 } as const
 export type Category = keyof typeof CATEGORIES
+
+/** Dogs welcome, by OpenStreetMap or the venue's own website (lib/place-sync.ts). */
+export const dogFriendly = (p: { extra: { dogs?: boolean } }) => p.extra.dogs === true
+/** A café whose website welcomes laptops, or one with customer Wi-Fi that doesn't ban them. */
+export const laptopFriendly = (p: { category: Category; extra: { laptops?: boolean; wifi?: boolean } }) =>
+  p.extra.laptops === true || (p.category === 'cafe' && p.extra.wifi === true && p.extra.laptops !== false)
 export const CATEGORY_KEYS = Object.keys(CATEGORIES) as Category[]
 
 export const EVENT_KINDS = {

@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { requireUser, requireAdmin } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { syncEvents } from '@/lib/sources'
+import { syncPlaces } from '@/lib/place-sync'
 import { HOOD, EVENT_KINDS, LISTING_KINDS, LONDON_BOROUGHS } from '@/lib/config'
 import { DAY_KEYS, londonToISO } from '@/lib/hours'
 import type { Hours, User } from '@/lib/types'
@@ -225,6 +226,10 @@ export async function removeAdmin(fd: FormData) {
 export async function syncNow() {
   await requireAdmin()
   back('/admin', 'ok', await syncEvents())
+}
+export async function syncPlacesNow() {
+  await requireAdmin()
+  back('/admin', 'ok', await syncPlaces(Date.now() + 200_000))
 }
 const MODERATION = { reviews: ['visible', 'hidden'], listings: ['active', 'hidden'], wishes: ['visible', 'hidden'], events: ['published', 'rejected'], places: ['published', 'hidden'] } as const
 export async function moderate(fd: FormData) {

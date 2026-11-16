@@ -11,7 +11,7 @@ import { googlePlace } from '@/lib/google'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
 import { lineStatus } from '@/lib/tfl'
 import { sunTimes } from '@/lib/sun'
-import { EVENT_KINDS } from '@/lib/config'
+import { EVENT_KINDS, dogFriendly, laptopFriendly } from '@/lib/config'
 import { DAY_KEYS, DAY_LABELS, londonNow, formatPrice, formatDay, formatTime } from '@/lib/hours'
 import { addReview, moderate, toggleFavorite } from '@/app/actions'
 
@@ -62,7 +62,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
             <div className="mb-2 flex flex-wrap gap-1.5">
               <CategoryTag category={place.category} sub={place.subcategory} />
               {place.hours ? <OpenBadge hours={place.hours} now={now} /> : google?.currentOpeningHours?.openNow != null && <span className={`tag ${google.currentOpeningHours.openNow ? 'bg-grass' : 'bg-ink/10'}`}>{google.currentOpeningHours.openNow ? 'Open now' : 'Closed now'}</span>}
-              {place.verified && <VerifiedTag />}{place.is_demo && <SampleTag />}{place.extra.outdoor_seating && <span className="tag bg-sun">☀️ Outdoor seats</span>}
+              {place.verified && <VerifiedTag />}{place.is_demo && <SampleTag />}{place.extra.outdoor_seating && <span className="tag bg-sun">☀️ Outdoor seats</span>}{dogFriendly(place) && <span className="tag bg-sun">🐶 Dogs welcome</span>}{laptopFriendly(place) && <span className="tag bg-sun">💻 Laptop friendly</span>}
               {place.status === 'hidden' && <span className="tag bg-tomato text-white">Hidden from the map</span>}
             </div>
             <h1 className="text-3xl leading-tight font-bold sm:text-5xl">{place.name}</h1>

@@ -5,7 +5,7 @@
 // and lib/supabase-repo.ts takes over with the same interface.
 import rawPlaces from '@/data/places.json'
 import { DEMO_USERS, realEvents } from '@/data/demo'
-import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser, BoroughTally } from './types'
+import type { Place, PlaceIndexRow, PlacePatch, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser, BoroughTally } from './types'
 import type { ExternalEvent } from './sources'
 
 type Row = Omit<Place, 'rating' | 'review_count'>
@@ -130,6 +130,11 @@ export const memoryRepo = {
     }
   },
   async deleteEvent(placeId: string, eventId: string) { db().events = db().events.filter(e => !(e.id === eventId && e.place_id === placeId)) },
+  /** Every place's imported facts, for the weekly refresh (lib/place-sync.ts). */
+  async placeIndex(): Promise<PlaceIndexRow[]> { return db().places.map(p => ({ ...p })) },
+  /** New places from OpenStreetMap; one already known (same osm_id) is left alone. */
+  async addPlaces(rows: Row[]) { const known = new Set(db().places.map(p => p.osm_id)); db().places.push(...rows.filter(r => !known.has(r.osm_id))) },
+  async patchPlace(placeId: string, patch: PlacePatch) { Object.assign(db().places.find(p => p.id === placeId)!, patch) },
   /** Remembers which Google Maps listing a place is, so it's only looked up once. */
   async setGooglePlaceId(placeId: string, googleId: string) { db().places.find(p => p.id === placeId)!.google_place_id = googleId },
   /** Returns a public URL, or null when photo storage isn't available (demo mode). */
