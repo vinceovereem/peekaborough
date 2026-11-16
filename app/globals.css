@@ -53,6 +53,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
   animation: bob 2.4s ease-in-out infinite;
 }
 .event-pin.today { background: var(--color-tomato); color: white; }
+.event-pin.picked { z-index: 5; background: var(--color-ink); color: white; padding: 5px 13px; font-size: 15px; box-shadow: 0 0 0 4px var(--color-sun), var(--shadow-pop-sm); }
 .event-pin::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: inherit; border: solid var(--color-ink); border-width: 0 2px 2px 0; transform: translateX(-50%) rotate(45deg); }
 .view-toggle { font: 700 13px var(--font-display) !important; color: var(--color-ink); }
 @keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }

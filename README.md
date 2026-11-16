@@ -62,7 +62,7 @@ The aim is for the guide to fill itself in. Each source is used the way its owne
 | OpenStreetMap, TfL, Wikimedia Commons, openfootball | Open data, pulled by the import scripts |
 | Islington Gazette, Islington Local Guide, r/islington | Their RSS feeds: headline + link on the News page, refreshed every 15 minutes |
 | Skiddle, Ticketmaster | Official event APIs (`lib/sources.ts`). Free keys in `.env.example`; a daily cron (`vercel.json` → `/api/sync`) and a "Sync now" button in the back office pull events inside the borough |
-| Park Theatre, King's Head Theatre, Little Angel Theatre | Each theatre's own box-office feed (Spektrix open JSON, no key; `lib/theatres.ts`): show title, date and time only, linking to the theatre's what's-on page. No agreement with the theatres yet — worth a courtesy email |
+| Park Theatre, King's Head Theatre, Little Angel Theatre | Each theatre's own box-office feed (Spektrix open JSON, no key; `lib/theatres.ts`): show title, date and time, the facts filed with the show (genre, length, age guidance), ticket prices and whether any seats are left — not the theatre's own description. Seats left is one small call per performance (about 300 a day across the three). Links go to the theatre's what's-on page. No agreement with the theatres yet — worth a courtesy email |
 | Eventbrite | No public search API any more — organisers add their events (or Eventbrite link) through "Suggest an event" |
 | Time Out, Visit London, The Standard, Islington Life | No feeds: linked from the News page, not copied |
 | X / Twitter | Paid API only; not connected |

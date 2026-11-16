@@ -23,6 +23,10 @@ export type Post = { id: string; place_id: string; title: string; body: string; 
 export type Event = {
   id: string; place_id: string | null; title: string; description: string | null; kind: EventKind
   venue_name: string; lat: number; lng: number; starts_at: string; ends_at: string | null; url: string | null; price_pence: number | null
+  /** The dearest ticket, when a source gives a range. */
+  price_max_pence?: number | null
+  /** True only when the source says no tickets are left. */
+  sold_out?: boolean
   is_sample: boolean; status: 'published' | 'pending' | 'rejected'; created_by: string | null
   /** Set when the event was pulled in automatically (e.g. "Skiddle"); null for ones people added. */
   source: string | null

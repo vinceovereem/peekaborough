@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import Nav from '@/components/Nav'
 import PlacePicture from '@/components/PlacePicture'
 import SubmitButton from '@/components/SubmitButton'
-import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills, Flash, Empty, SignInPrompt } from '@/components/ui'
+import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, EventTags, LinePills, Flash, Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { googlePlace } from '@/lib/google'
@@ -110,7 +110,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
               <ul className="space-y-2">{events.slice(0, 8).map(e => (
                 <li key={e.id} className="card flex items-start gap-3 p-3">
                   <span className="tag shrink-0 bg-sun">{formatDay(e.starts_at)} · {formatTime(e.starts_at)}</span>
-                  <span><b>{EVENT_KINDS[e.kind].emoji} {e.title}</b> {e.price_pence != null && <span className="tag bg-grass">{formatPrice(e.price_pence)}</span>} {e.is_sample && <SampleTag />}{e.description && <span className="muted block text-sm">{e.description}</span>}</span>
+                  <span><b>{EVENT_KINDS[e.kind].emoji} {e.title}</b> <EventTags e={e} /> {e.is_sample && <SampleTag />}{e.description && <span className="muted block text-sm">{e.description}</span>}</span>
                 </li>
               ))}</ul>
               <Link href="/events" className="mt-2 inline-block text-sm font-bold underline">Add these to your calendar →</Link>

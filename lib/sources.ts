@@ -5,10 +5,10 @@
 // way to list Eventbrite events is for the organiser to add them (or their Eventbrite link) by hand.
 import { APP_NAME, SITE_URL, HOOD, inArea, type EventKind } from './config'
 import { repo } from './repo'
-import { THEATRES, performanceDays, type Theatre } from './theatres'
+import { THEATRES, upcoming, performanceDays, type Theatre, type BoxOffice } from './theatres'
 import type { Event } from './types'
 
-export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'> & { source: string; source_id: string }
+export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'> & Required<Pick<Event, 'price_max_pence' | 'sold_out'>> & { source: string; source_id: string }
 
 const [lng, lat] = HOOD.center
 const get = async (url: string) => {
@@ -34,11 +34,15 @@ async function skiddle(key: string): Promise<ExternalEvent[]> {
     found.push(...batch)
     if (batch.length < 100) break
   }
+  // ponytail: temporary. Skiddle's docs don't list its ticket fields, so one listing is logged (long text cut) to find the
+  // price-range and sold-out ones. Until they are wired in, Skiddle events carry one price and are never marked sold out.
+  const sample = found.find(e => e?.tickets) ?? found[0]
+  if (sample) console.log('Skiddle fields', JSON.stringify(sample, (_, v) => typeof v === 'string' && v.length > 50 ? `${v.slice(0, 50)}…` : v).slice(0, 3500))
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
     starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: e.link ?? null,
-    price_pence: /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice),
+    price_pence: /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice), price_max_pence: null, sold_out: false,
   }] : [])
 }
 
@@ -57,7 +61,8 @@ async function ticketmaster(key: string): Promise<ExternalEvent[]> {
       source: 'Ticketmaster', source_id: String(e.id), title: clip(e.name, 120) ?? 'Event', description: clip(e.info ?? e.pleaseNote, 600),
       kind: segment === 'Music' ? 'music' : segment === 'Sports' ? (/football|soccer/i.test(genre ?? '') ? 'football' : 'sport') : segment === 'Arts & Theatre' ? 'arts' : 'community',
       venue_name: clip(venue.name, 120) ?? 'Venue', lat: +venue.location.latitude, lng: +venue.location.longitude,
-      starts_at: new Date(e.dates.start.dateTime).toISOString(), ends_at: null, url: e.url ?? null, price_pence: pence(e.priceRanges?.[0]?.min),
+      starts_at: new Date(e.dates.start.dateTime).toISOString(), ends_at: null, url: e.url ?? null,
+      price_pence: pence(e.priceRanges?.[0]?.min), price_max_pence: pence(e.priceRanges?.[0]?.max), sold_out: false,
     }]
   })
 }
@@ -67,7 +72,17 @@ async function ticketmaster(key: string): Promise<ExternalEvent[]> {
 async function theatre(t: Theatre): Promise<ExternalEvent[]> {
   const base = `https://system.spektrix.com/${t.client}/api/v3`, today = new Date().toISOString().slice(0, 10)
   const [shows, performances, plans] = await Promise.all([get(`${base}/events?instanceStart_from=${today}`), get(`${base}/instances?startFrom=${today}`), get(`${base}/plans`)])
-  return performanceDays(t, shows, performances, plans)
+  // ponytail: the feed has no bulk form for seats left, so it is one small call per listed performance (about 100 per
+  // theatre a day), eight at a time, plus one per price list. A call that fails leaves that performance without the detail.
+  const boxOffice: BoxOffice = new Map(), lists = new Map<string, Promise<number[] | undefined>>(), kept = upcoming(t, shows, performances, plans)
+  const quiet = (url: string) => get(url).catch(() => null)
+  for (let i = 0; i < kept.length; i += 8) await Promise.all(kept.slice(i, i + 8).map(async p => {
+    const list = p.priceList ?? p.id
+    if (!lists.has(list)) lists.set(list, quiet(`${base}/instances/${p.id}/price-list`).then(d => d?.prices?.map((x: { amount: unknown }) => Number(x.amount)).filter(Number.isFinite)))
+    const [status, prices] = await Promise.all([quiet(`${base}/instances/${p.id}/status`), lists.get(list)])
+    boxOffice.set(p.id, { left: status?.capacity > 0 && typeof status.available === 'number' ? status.available : undefined, prices })
+  }))
+  return performanceDays(t, shows, performances, plans, undefined, boxOffice)
 }
 
 const CONNECTORS = [

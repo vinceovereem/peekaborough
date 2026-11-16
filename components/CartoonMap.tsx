@@ -6,7 +6,7 @@ import { CATEGORIES, CATEGORY_KEYS, HOOD } from '@/lib/config'
 import { cartoonStyle, INK } from '@/lib/map-style'
 import type { MapPlace } from '@/lib/types'
 
-export type MapPin = { id: string; lng: number; lat: number; label: string; today: boolean }
+export type MapPin = { id: string; lng: number; lat: number; label: string; today: boolean; /** the venue whose card is open */ picked?: boolean }
 type Props = {
   places?: MapPlace[]
   pins?: MapPin[]
@@ -111,7 +111,7 @@ export default function CartoonMap({ places, pins, selected, onPlace, onPin, her
     pinMarkers.current.forEach(m => m.remove())
     pinMarkers.current = (latest.current.pins ?? []).map(pin => {
       const b = document.createElement('button')
-      b.className = `event-pin${pin.today ? ' today' : ''}`; b.textContent = pin.label
+      b.className = `event-pin${pin.today ? ' today' : ''}${pin.picked ? ' picked' : ''}`; b.textContent = pin.label
       b.onclick = e => { e.stopPropagation(); latest.current.onPin?.(pin.id) }
       return new lib.current!.Marker({ element: b, anchor: 'bottom', offset: [0, -52] }).setLngLat([pin.lng, pin.lat]).addTo(map.current!)
     })
