@@ -8,7 +8,7 @@ export default function Terms() {
   return (
     <LegalPage title="Terms of use" updated="16 November 2026">
       <h2>About this site</h2>
-      <p>{APP_NAME} is a free neighbourhood guide for {HOOD.name}, run by {OPERATOR.name}, a company registered in England &amp; Wales (company no. {OPERATOR.number}, registered office {OPERATOR.office}). You can contact us at <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>. By using the site you agree to these terms.</p>
+      <p>{APP_NAME} is a free neighbourhood guide for {HOOD.name}. You can contact us at <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>. By using the site you agree to these terms.</p>
 
       <h2>Your account</h2>
       <p>You sign in with a Google account and are responsible for what is done with it here. You need to be 13 or over. One person, one account.</p>
