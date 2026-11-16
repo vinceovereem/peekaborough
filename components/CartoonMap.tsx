@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef } from 'react'
-import type { Map as MLMap, Marker as MLMarker, GeoJSONSource, GeoJSONFeature } from 'maplibre-gl'
+import type { Map as MLMap, Marker as MLMarker, GeoJSONSource, GeoJSONFeature, SymbolLayerSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { CATEGORIES, CATEGORY_KEYS, HOOD } from '@/lib/config'
 import { cartoonStyle, INK } from '@/lib/map-style'
@@ -97,6 +97,13 @@ const toGeoJSON = (places: MapPlace[]) => ({
   })),
 })
 
+/**
+ * Pins that would overlap are normally dropped, which at borough zoom hid most of the 3,500 venues and made
+ * them look missing. From street level (zoom 15) every pin is drawn, stacked if need be; a filtered map with
+ * only a few hundred pins draws them all at any zoom.
+ */
+const pinOverlap = (count: number): NonNullable<SymbolLayerSpecification['layout']>['icon-overlap'] => count <= 300 ? 'always' : ['step', ['zoom'], 'never', 15, 'always']
+
 export default function CartoonMap({ places, pins, selected, onPlace, onPin, hero }: Props) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<MLMap | null>(null)
@@ -105,7 +112,11 @@ export default function CartoonMap({ places, pins, selected, onPlace, onPin, her
   const latest = useRef({ places, pins, selected, onPlace, onPin })
   useEffect(() => { latest.current = { places, pins, selected, onPlace, onPin } })
 
-  const syncPlaces = () => (map.current?.getSource('places') as GeoJSONSource | undefined)?.setData(toGeoJSON(latest.current.places ?? []))
+  const syncPlaces = () => {
+    const m = map.current, list = latest.current.places ?? []
+    ;(m?.getSource('places') as GeoJSONSource | undefined)?.setData(toGeoJSON(list))
+    if (m?.getLayer('places')) m.setLayoutProperty('places', 'icon-overlap', pinOverlap(list.length))
+  }
   const syncPins = () => {
     if (!map.current || !lib.current) return
     pinMarkers.current.forEach(m => m.remove())
@@ -168,6 +179,7 @@ export default function CartoonMap({ places, pins, selected, onPlace, onPin, her
         const paint = { 'text-color': INK, 'text-halo-color': '#fff8ea', 'text-halo-width': 2 }
         m.addLayer({ id: 'places', type: 'symbol', source: 'places', filter: ['!', ['get', 'lm']], layout: {
           'icon-image': ['concat', 'pin-', ['get', 'category']], 'icon-anchor': 'bottom', 'icon-padding': 1,
+          'icon-overlap': pinOverlap(latest.current.places?.length ?? 0),
           'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 16, 0.75, 18.5, 1.05],
           'symbol-sort-key': ['get', 'rank'],
           'text-field': ['step', ['zoom'], '', 16.2, ['get', 'name']], 'text-size': 12, ...text,
