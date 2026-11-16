@@ -19,14 +19,26 @@ out center tags;`
 
 export type OsmElement = { type: string; id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> }
 
+/** Why an Overpass answer can't be trusted, or null if it can. Mirrors can lag the real map by months (one served 2025 names in
+ *  Nov 2026), and a query that ran out of time still comes back "OK" with a remark and only part of the places. */
+export function answerProblem(answer: { elements?: unknown; remark?: string; osm3s?: { timestamp_osm_base?: string } } | null, now = Date.now()) {
+  if (!Array.isArray(answer?.elements)) return 'unreadable answer'
+  if (answer.remark) return `incomplete answer (${answer.remark.slice(0, 80)})`
+  const asOf = Date.parse(answer.osm3s?.timestamp_osm_base ?? '')
+  if (!(now - asOf < 2 * 86400_000)) return `stale data (as of ${answer.osm3s?.timestamp_osm_base ?? 'unknown'})`
+  return null
+}
+
 /** Gives up (throws) once `until` (a Date.now() value) has passed, so a scheduled job keeps time for its other work. */
 export async function overpass(bbox: string, until = Infinity): Promise<OsmElement[]> {
   // Public Overpass servers are often busy — try mirrors, then back off and go round again.
   const MIRRORS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']
   for (let attempt = 0; attempt < 9 && Date.now() < until; attempt++) {
     const res = await fetch(MIRRORS[attempt % 3], { method: 'POST', body: 'data=' + encodeURIComponent(query(bbox)), headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...UA }, signal: AbortSignal.timeout(Math.max(1000, Math.min(130_000, until - Date.now()))) }).catch(() => null) // a busy mirror can hang forever
-    if (res?.ok) return (await res.json()).elements
-    console.error(`${MIRRORS[attempt % 3]} -> ${res?.status ?? 'network error'}, retrying`)
+    const answer = res?.ok ? await res.json().catch(() => null) : null
+    const problem = !res?.ok ? res?.status ?? 'network error' : answerProblem(answer)
+    if (!problem) return answer.elements
+    console.error(`${MIRRORS[attempt % 3]} -> ${problem}, retrying`)
     await new Promise(r => setTimeout(r, Math.min(4000 * (attempt + 1), Math.max(0, until - Date.now()))))
   }
   throw new Error('All Overpass mirrors failed — try again in a few minutes')

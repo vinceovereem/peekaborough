@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { osmFacts, planRefresh, readWebsite } from './osm.ts'
+import { answerProblem, osmFacts, planRefresh, readWebsite } from './osm.ts'
 
 test('reads what a venue says about dogs and laptops', () => {
   assert.deepEqual(readWebsite('Well-behaved dogs are always welcome in the bar.'), { dogs: true })
@@ -33,4 +33,13 @@ test('a refresh updates unclaimed places, keeps owners\' edits, and hides what h
   })
   assert.deepEqual(gone.map(p => p.name), ['Closed Shop'])
   assert.equal(planRefresh(known, answer.slice(0, 3) as never).gone.length, 0, 'a short answer hides nothing')
+})
+
+test('turns down stale or cut-short Overpass answers', () => {
+  const now = Date.parse('2026-11-16T12:00:00Z'), fresh = { timestamp_osm_base: '2026-11-16T11:58:00Z' }
+  assert.equal(answerProblem({ elements: [], osm3s: fresh }, now), null)
+  assert.match(answerProblem({ elements: [], osm3s: { timestamp_osm_base: '2025-10-20T00:00:00Z' } }, now)!, /stale/)
+  assert.match(answerProblem({ elements: [] }, now)!, /stale/)
+  assert.match(answerProblem({ elements: [], remark: 'runtime error: Query timed out', osm3s: fresh }, now)!, /incomplete/)
+  assert.match(answerProblem(null, now)!, /unreadable/)
 })
