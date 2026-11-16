@@ -49,7 +49,7 @@ export const supabaseRepo: Repo = {
     return rows.map((r: any) => ({ ...r, author: author(r) })) as Review[]
   },
   async events(placeId) {
-    let q = (await createClient()).from('events').select('*, place:places(slug)').eq('status', 'published').gte('starts_at', soon()).order('starts_at').limit(300)
+    let q = (await createClient()).from('events').select('*, place:places(slug)').eq('status', 'published').gte('starts_at', soon()).order('starts_at').limit(1000)
     if (placeId) q = q.eq('place_id', placeId)
     return ok(await q) as Event[]
   },
