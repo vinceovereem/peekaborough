@@ -82,7 +82,9 @@ export async function syncEvents(): Promise<string> {
   const report: string[] = []
   for (const c of active) {
     try {
-      const events = (await c.run(c.key!)).filter(e => inArea(e.lng, e.lat) && Date.parse(e.starts_at) > Date.now())
+      const found = (await c.run(c.key!)).filter(e => inArea(e.lng, e.lat) && Date.parse(e.starts_at) > Date.now())
+      // A paged source can list one event on two pages; the same id twice in one save is refused by the database.
+      const events = [...new Map(found.map(e => [e.source_id, e])).values()]
       await repo.importEvents(events)
       report.push(`${c.name}: ${events.length} events in ${HOOD.name}`)
     } catch (e) {
