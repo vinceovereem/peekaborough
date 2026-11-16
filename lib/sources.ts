@@ -28,21 +28,29 @@ const clip = (s: unknown, max: number) => typeof s === 'string' && s.trim() ? s.
 const SKIDDLE_KINDS: Record<string, EventKind> = { FEST: 'music', LIVE: 'music', CLUB: 'music', THEATRE: 'arts', COMEDY: 'arts', EXHIB: 'arts', ARTS: 'arts', SPORT: 'sport', BARPUB: 'food' }
 /** https://github.com/Skiddle/web-api — free key from skiddle.com/api/join.php. Radius is in miles. */
 async function skiddle(key: string): Promise<ExternalEvent[]> {
-  const found: any[] = []
+  const found: any[] = [], search = `https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100`
   for (let page = 0; page < 30; page++) {
-    const batch = (await get(`https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100&offset=${page * 100}`)).results ?? []
+    const batch = (await get(`${search}&offset=${page * 100}`)).results ?? []
     found.push(...batch)
     if (batch.length < 100) break
   }
-  // ponytail: temporary. Skiddle's docs don't list its ticket fields, so one listing is logged (long text cut) to find the
-  // price-range and sold-out ones. Until they are wired in, Skiddle events carry one price and are never marked sold out.
-  const sample = found.find(e => e?.tickets) ?? found[0]
-  if (sample) console.log('Skiddle fields', JSON.stringify(sample, (_, v) => typeof v === 'string' && v.length > 50 ? `${v.slice(0, 50)}…` : v).slice(0, 3500))
+  // ponytail: temporary. A listing has no sold-out field, but the search has a documented `ticketsavailable=1` filter.
+  // This logs the ticketed events that filter leaves out, so their pages can be checked before anything is marked
+  // sold out. Until then Skiddle events are never marked sold out. It cannot fail the sync.
+  try {
+    const open: any[] = []
+    for (let page = 0; page < 3; page++) open.push(...((await get(`${search}&ticketsavailable=1&offset=${page * 100}`)).results ?? []))
+    const ids = new Set(open.map(e => e.id)), until = Date.parse(open.at(-1)?.startdate)
+    const leftOut = found.filter(e => e.tickets && Date.parse(e.startdate) <= until && !ids.has(e.id))
+    console.log('Skiddle availability', JSON.stringify({ listed: found.length, ticketed: found.filter(e => e.tickets).length, open: open.length, until: open.at(-1)?.startdate, leftOut: leftOut.length, sample: leftOut.slice(0, 12).map(e => [e.id, e.link, e.ticketpricing, e.hotSeller]) }).slice(0, 3800))
+  } catch (e) { console.log('Skiddle availability check failed', e) }
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
     starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: e.link ?? null,
-    price_pence: /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice), price_max_pence: null, sold_out: false,
+    // tickets Skiddle sells carry a cheapest and dearest price; otherwise there is only the organiser's free-text door price
+    price_pence: e.ticketpricing?.minPrice > 0 ? pence(e.ticketpricing.minPrice) : /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice),
+    price_max_pence: e.ticketpricing?.minPrice > 0 && e.ticketpricing.maxPrice > e.ticketpricing.minPrice ? pence(e.ticketpricing.maxPrice) : null, sold_out: false,
   }] : [])
 }
 
