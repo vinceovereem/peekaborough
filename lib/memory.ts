@@ -17,7 +17,7 @@ function init() {
     owners: new Set<string>(), menu: [] as MenuItem[], posts: [] as Post[], reviews: [] as Review[],
     events: realEvents(), listings: [] as Listing[], wishes: [] as WishRow[], claims: [] as Claim[],
     names: Object.fromEntries(DEMO_USERS.map(u => [u.id, u.name])) as Record<string, string>,
-    favorites: new Set<string>(), applications: [] as AdminApplication[], boroughVotes: [] as string[],
+    favorites: new Set<string>(), applications: [] as AdminApplication[], boroughVotes: [] as { borough: string; user_id: string | null }[],
   }
 }
 const g = globalThis as unknown as { __patch?: ReturnType<typeof init> }
@@ -130,9 +130,15 @@ export const memoryRepo = {
   /** Returns a public URL, or null when photo storage isn't available (demo mode). */
   async uploadCover(placeId: string, file: File): Promise<string | null> { void placeId; void file; return null },
 
-  /** One vote in the "which borough next?" poll. Anyone may vote; the caller has validated the name. */
-  async addBoroughVote(borough: string) { db().boroughVotes.push(borough) },
-  async boroughTally(): Promise<BoroughTally[]> { return tallyBoroughs(db().boroughVotes) },
+  /** The borough this person picked in the "which borough next?" poll, if they have voted. */
+  async myBoroughVote(userId: string): Promise<string | null> { return db().boroughVotes.find(v => v.user_id === userId)?.borough ?? null },
+  /** One vote per person; the caller has validated the name. Returns false if they had already voted. */
+  async addBoroughVote(userId: string, borough: string): Promise<boolean> {
+    if (db().boroughVotes.some(v => v.user_id === userId)) return false
+    db().boroughVotes.push({ borough, user_id: userId }); return true
+  },
+  /** Counts signed-in votes only; anonymous ones from before votes needed an account are ignored. */
+  async boroughTally(): Promise<BoroughTally[]> { return tallyBoroughs(db().boroughVotes.filter(v => v.user_id).map(v => v.borough)) },
 
   // --- admin (callers must check requireAdmin first) ---
   async adminData(): Promise<{ claims: Claim[]; pendingEvents: Event[]; reviews: Review[]; listings: Listing[]; wishes: Wish[]; applications: AdminApplication[]; admins: AdminUser[]; boroughs: BoroughTally[]; counts: Record<'places' | 'verified' | 'reviews' | 'events' | 'listings' | 'wishes', number> }> {

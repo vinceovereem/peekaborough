@@ -138,13 +138,19 @@ export const supabaseRepo: Repo = {
     return storage.getPublicUrl(path).data.publicUrl
   },
 
-  async addBoroughVote(borough) {
-    // Anyone may vote, signed in or not, so the table has no public grants and the server writes it.
-    ok(await createAdminClient().from('borough_votes').insert({ borough }).select('id'))
+  async myBoroughVote(userId) {
+    return ((await (await createClient()).from('borough_votes').select('borough').eq('user_id', userId).maybeSingle()).data as { borough: string } | null)?.borough ?? null
+  },
+  async addBoroughVote(userId, borough) {
+    const { error } = await (await createClient()).from('borough_votes').insert({ borough, user_id: userId })
+    if (error?.code === '23505') return false // the one-vote-per-person index
+    if (error) throw new Error(error.message)
+    return true
   },
   async boroughTally() {
+    // Everyone's votes, so the service role reads them; only counts ever leave the server.
     // ponytail: tallied here from up to 10k rows; switch to a group-by view once votes pass that
-    return tallyBoroughs((ok(await createAdminClient().from('borough_votes').select('borough').limit(10000)) as { borough: string }[]).map(r => r.borough))
+    return tallyBoroughs((ok(await createAdminClient().from('borough_votes').select('borough').not('user_id', 'is', null).limit(10000)) as { borough: string }[]).map(r => r.borough))
   },
   async adminData() {
     const db = createAdminClient()
