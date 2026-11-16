@@ -4,7 +4,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react'
 import CartoonMap, { type MapPin } from './CartoonMap'
 import PlacePicture from './PlacePicture'
 import AskPanel from './AskPanel'
-import { Stars, CategoryIcon, CategoryTag, OpenBadge, VerifiedTag, SampleTag, EventTags, LinePills } from './ui'
+import { Stars, CategoryIcon, CategoryTag, OpenBadge, VerifiedTag, SampleTag, EventTags, soldOutLabel, LinePills } from './ui'
 import { CATEGORIES, CATEGORY_KEYS, EVENT_KINDS, type Category } from '@/lib/config'
 import { isOpenNow, formatDay, formatTime, formatPrices, dayKey } from '@/lib/hours'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
@@ -133,7 +133,7 @@ export default function MapExplorer({ places: slim, events, posts, favourites, i
           {events.slice(0, 6).map(e => (
             <li key={e.id}><button onClick={() => pickVenue(venueKey(e))} className="flex w-full items-start gap-2 rounded-xl p-1.5 text-left hover:bg-sun/40">
               <span className="w-14 shrink-0 rounded-lg border-2 border-ink bg-white py-0.5 text-center text-xs leading-tight font-bold">{formatDay(e.starts_at).split(' ')[0]}<br />{formatDay(e.starts_at).split(' ').slice(1).join(' ')}</span>
-              <span className="min-w-0"><b className="block truncate">{EVENT_KINDS[e.kind].emoji} {e.title}</b><span className="muted text-sm">{formatTime(e.starts_at)} · {e.venue_name}{e.price_pence != null && ` · ${formatPrices(e.price_pence, e.price_max_pence)}`}{e.sold_out && ' · Sold out'}</span></span>
+              <span className="min-w-0"><b className="block truncate">{EVENT_KINDS[e.kind].emoji} {e.title}</b><span className="muted text-sm">{formatTime(e.starts_at)} · {e.venue_name}{e.price_pence != null && ` · ${formatPrices(e.price_pence, e.price_max_pence)}`}{e.sold_out && ` · ${soldOutLabel(e)}`}</span></span>
             </button></li>
           ))}
         </ul>
