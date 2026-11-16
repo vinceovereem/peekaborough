@@ -71,7 +71,8 @@ What it deliberately does not do is copy articles, guides or listings from other
 belongs to them; the route to using more of it is a partnership (Islington Local Guide would be the
 obvious first conversation).
 
-Skiddle and the theatre feeds have run against the real services. Ticketmaster follows its published
+Skiddle and the theatre feeds have run against the real services (Skiddle's "no tickets" marks were checked
+against its own pages on 16 November 2026). Ticketmaster follows its published
 docs but no live response has been through it yet.
 
 Looked at and not connectable (November 2026): SeatGeek (US and Canada only), DICE, Resident Advisor,
