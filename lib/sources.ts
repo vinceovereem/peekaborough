@@ -34,16 +34,15 @@ async function skiddle(key: string): Promise<ExternalEvent[]> {
     found.push(...batch)
     if (batch.length < 100) break
   }
-  // ponytail: temporary. A listing has no sold-out field, but the search has a documented `ticketsavailable=1` filter.
-  // This logs the ticketed events that filter leaves out, so their pages can be checked before anything is marked
-  // sold out. Until then Skiddle events are never marked sold out. It cannot fail the sync.
+  // ponytail: temporary. A listing has no sold-out field, and comparing the search with its `ticketsavailable=1` filter
+  // gave a wrong answer for one event in five (16 Nov 2026). This logs the full record of an event whose page said
+  // "no tickets available" that day beside one on sale, to find a field that tells them apart. Until then Skiddle
+  // events are never marked sold out. It cannot fail the sync.
   try {
-    const open: any[] = []
-    for (let page = 0; page < 3; page++) open.push(...((await get(`${search}&ticketsavailable=1&offset=${page * 100}`)).results ?? []))
-    const ids = new Set(open.map(e => e.id)), until = Date.parse(open.at(-1)?.startdate)
-    const leftOut = found.filter(e => e.tickets && Date.parse(e.startdate) <= until && !ids.has(e.id))
-    console.log('Skiddle availability', JSON.stringify({ listed: found.length, ticketed: found.filter(e => e.tickets).length, open: open.length, until: open.at(-1)?.startdate, leftOut: leftOut.length, sample: leftOut.slice(0, 12).map(e => [e.id, e.link, e.ticketpricing, e.hotSeller]) }).slice(0, 3800))
-  } catch (e) { console.log('Skiddle availability check failed', e) }
+    const cut = (_: string, v: unknown) => typeof v === 'string' && v.length > 40 ? `${v.slice(0, 40)}…` : Array.isArray(v) ? v.slice(0, 2) : v
+    const onSale = (await get(`${search}&ticketsavailable=1&limit=1`)).results?.[0]?.id
+    for (const id of ['43123481', onSale]) if (id) console.log(`Skiddle record ${id}${id === onSale ? ' (on sale)' : ' (no tickets on 16 Nov)'}`, JSON.stringify((await get(`https://www.skiddle.com/api/v1/events/${id}/?api_key=${key}`)).results, cut).slice(0, 3800))
+  } catch (e) { console.log('Skiddle record check failed', e) }
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
