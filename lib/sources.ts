@@ -34,22 +34,25 @@ async function skiddle(key: string): Promise<ExternalEvent[]> {
     found.push(...batch)
     if (batch.length < 100) break
   }
-  // ponytail: temporary. A listing has no sold-out field, and comparing the search with its `ticketsavailable=1` filter
-  // gave a wrong answer for one event in five (16 Nov 2026). This logs the full record of an event whose page said
-  // "no tickets available" that day beside one on sale, to find a field that tells them apart. Until then Skiddle
-  // events are never marked sold out. It cannot fail the sync.
-  try {
-    const cut = (_: string, v: unknown) => typeof v === 'string' && v.length > 40 ? `${v.slice(0, 40)}…` : Array.isArray(v) ? v.slice(0, 2) : v
-    const onSale = (await get(`${search}&ticketsavailable=1&limit=1`)).results?.[0]?.id
-    for (const id of ['43123481', onSale]) if (id) console.log(`Skiddle record ${id}${id === onSale ? ' (on sale)' : ' (no tickets on 16 Nov)'}`, JSON.stringify((await get(`https://www.skiddle.com/api/v1/events/${id}/?api_key=${key}`)).results, cut).slice(0, 3800))
-  } catch (e) { console.log('Skiddle record check failed', e) }
+  // Whether tickets are left is only in an event's own record: `ticketStatus` is "0" when Skiddle has none and "2" when
+  // they are on sale (compared with skiddle.com on 16 Nov 2026). So it is one more call per ticketed event inside the
+  // borough. ponytail: about 250 calls a day, eight at a time; a call that fails leaves that event unmarked.
+  const local = found.filter(e => e?.id && e.tickets && e.venue?.latitude && inArea(+e.venue.longitude, +e.venue.latitude) && Date.parse(e.startdate) > Date.now())
+  const none = new Set<string>(), seen: Record<string, string[]> = {}
+  for (let i = 0; i < local.length; i += 8) await Promise.all(local.slice(i, i + 8).map(async e => {
+    const status = String((await get(`https://www.skiddle.com/api/v1/events/${e.id}/?api_key=${key}`).catch(() => null))?.results?.ticketStatus)
+    ;(seen[status] ??= []).push(e.link)
+    if (status === '0') none.add(e.id)
+  }))
+  // temporary: how many events had each status, with a few pages of each to check the reading above against
+  console.log('Skiddle ticket status', JSON.stringify(Object.entries(seen).map(([status, links]) => ({ status, events: links.length, pages: status === '2' ? links.slice(0, 2) : links.slice(0, 8) }))).slice(0, 3900))
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
     starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: e.link ?? null,
     // tickets Skiddle sells carry a cheapest and dearest price; otherwise there is only the organiser's free-text door price
     price_pence: e.ticketpricing?.minPrice > 0 ? pence(e.ticketpricing.minPrice) : /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice),
-    price_max_pence: e.ticketpricing?.minPrice > 0 && e.ticketpricing.maxPrice > e.ticketpricing.minPrice ? pence(e.ticketpricing.maxPrice) : null, sold_out: false,
+    price_max_pence: e.ticketpricing?.minPrice > 0 && e.ticketpricing.maxPrice > e.ticketpricing.minPrice ? pence(e.ticketpricing.maxPrice) : null, sold_out: none.has(e.id),
   }] : [])
 }
 
