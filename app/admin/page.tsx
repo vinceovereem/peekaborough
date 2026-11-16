@@ -22,6 +22,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const [flash, data] = await Promise.all([searchParams, repo.adminData()])
   const pending = data.claims.filter(c => c.status === 'pending'), decided = data.claims.filter(c => c.status !== 'pending')
   const applying = data.applications.filter(a => a.status === 'pending'), applied = data.applications.filter(a => a.status !== 'pending')
+  const votes = data.boroughs.reduce((n, b) => n + b.votes, 0)
   return (
     <Shell title="Back office" intro="Verify owners, approve events and keep the neighbourhood friendly." flash={flash}>
       <dl className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -110,6 +111,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <button className="btn">Add admin</button>
         </form>
         <p className="muted mt-2 text-sm">They need to have signed in to the site at least once. Admins can approve owners and events, hide content, and add or remove other admins.</p>
+      </section>
+
+      <section className="card mb-10 p-4">
+        <h2 className="text-xl font-bold">🗳️ Which borough next? <span className="tag bg-sun align-middle">{votes} {votes === 1 ? 'vote' : 'votes'}</span></h2>
+        {data.boroughs.length === 0 ? <p className="muted mt-2 text-sm">No votes yet. The poll is in the footer of every page.</p> : (
+          <ol className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">{data.boroughs.map(b => (
+            <li key={b.borough} className="flex justify-between gap-2 border-b-2 border-dashed border-ink/15 py-1"><span>{b.borough}</span><b>{b.votes}</b></li>
+          ))}</ol>
+        )}
       </section>
 
       <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">

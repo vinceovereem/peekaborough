@@ -42,6 +42,7 @@ export type AdminApplication = {
   /** the account that applied, as it appears on the site */
   account?: { name: string; email: string | null }
 }
+export type BoroughTally = { borough: string; votes: number }
 export type AdminUser = { id: string; name: string; email: string | null }
 
 export type Claim = {
