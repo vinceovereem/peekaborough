@@ -1,14 +1,15 @@
-// Automatic event listings from ticketing platforms' official APIs. Each connector is off until
-// its key is set; `syncEvents` runs daily (vercel.json cron -> /api/sync) and from the admin page.
+// Automatic event listings from ticketing platforms' official APIs and from theatres' own feeds. A keyed
+// connector is off until its key is set; `syncEvents` runs daily (vercel.json cron -> /api/sync) and from the admin page.
 //
 // Eventbrite is not here on purpose: it withdrew its public event-search API, so the only supported
 // way to list Eventbrite events is for the organiser to add them (or their Eventbrite link) by hand.
 import { APP_NAME, SITE_URL, HOOD, inArea, type EventKind } from './config'
 import { repo } from './repo'
 import { isWebLink } from './links'
+import { THEATRES, upcoming, performanceDays, type Theatre, type BoxOffice } from './theatres'
 import type { Event } from './types'
 
-export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'> & { source: string; source_id: string }
+export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'> & Required<Pick<Event, 'price_max_pence' | 'sold_out'>> & { source: string; source_id: string }
 
 const [lng, lat] = HOOD.center
 const get = async (url: string) => {
@@ -22,24 +23,34 @@ const pence = (v: unknown) => { const n = typeof v === 'number' ? v : parseFloat
 // where about 50 events a day are listed: Skiddle's 30 pages of 100 cover roughly two months (the first live run,
 // at 5 pages, reached 10 days). Ticketmaster lets nobody page past 1,000. Search by venue if either bites.
 const MAX_PAGES = 5
-const link = (v: unknown) => typeof v === 'string' && v.length <= 300 && isWebLink(v) ? v : null // anything else would fail the whole batch in the database
 const clip = (s: unknown, max: number) => typeof s === 'string' && s.trim() ? s.trim().replace(/<[^>]+>/g, '').slice(0, max) : null
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- third-party JSON */
 const SKIDDLE_KINDS: Record<string, EventKind> = { FEST: 'music', LIVE: 'music', CLUB: 'music', THEATRE: 'arts', COMEDY: 'arts', EXHIB: 'arts', ARTS: 'arts', SPORT: 'sport', BARPUB: 'food' }
 /** https://github.com/Skiddle/web-api — free key from skiddle.com/api/join.php. Radius is in miles. */
 async function skiddle(key: string): Promise<ExternalEvent[]> {
-  const found: any[] = []
+  const found: any[] = [], search = `https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100`
   for (let page = 0; page < 30; page++) {
-    const batch = (await get(`https://www.skiddle.com/api/v1/events/search/?api_key=${key}&latitude=${lat}&longitude=${lng}&radius=3&order=date&description=1&limit=100&offset=${page * 100}`)).results ?? []
+    const batch = (await get(`${search}&offset=${page * 100}`)).results ?? []
     found.push(...batch)
     if (batch.length < 100) break
   }
+  // Whether tickets are left is only in an event's own record: `ticketStatus` is "0" when Skiddle has none ("2" and "3"
+  // are on sale). Compared with skiddle.com on 16 Nov 2026: all three events with "0" were sold out or waiting-list
+  // only. So it is one more call per ticketed event inside the borough.
+  // ponytail: about 180 calls a day, eight at a time; a call that fails leaves that event unmarked.
+  const local = found.filter(e => e?.id && e.tickets && e.venue?.latitude && inArea(+e.venue.longitude, +e.venue.latitude) && Date.parse(e.startdate) > Date.now())
+  const none = new Set<string>()
+  for (let i = 0; i < local.length; i += 8) await Promise.all(local.slice(i, i + 8).map(async e => {
+    if ((await get(`https://www.skiddle.com/api/v1/events/${e.id}/?api_key=${key}`).catch(() => null))?.results?.ticketStatus === '0') none.add(e.id)
+  }))
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
-    starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: link(e.link),
-    price_pence: /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice),
+    starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: e.link ?? null,
+    // tickets Skiddle sells carry a cheapest and dearest price; otherwise there is only the organiser's free-text door price
+    price_pence: e.ticketpricing?.minPrice > 0 ? pence(e.ticketpricing.minPrice) : /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice),
+    price_max_pence: e.ticketpricing?.minPrice > 0 && e.ticketpricing.maxPrice > e.ticketpricing.minPrice ? pence(e.ticketpricing.maxPrice) : null, sold_out: none.has(e.id),
   }] : [])
 }
 
@@ -58,25 +69,46 @@ async function ticketmaster(key: string): Promise<ExternalEvent[]> {
       source: 'Ticketmaster', source_id: String(e.id), title: clip(e.name, 120) ?? 'Event', description: clip(e.info ?? e.pleaseNote, 600),
       kind: segment === 'Music' ? 'music' : segment === 'Sports' ? (/football|soccer/i.test(genre ?? '') ? 'football' : 'sport') : segment === 'Arts & Theatre' ? 'arts' : 'community',
       venue_name: clip(venue.name, 120) ?? 'Venue', lat: +venue.location.latitude, lng: +venue.location.longitude,
-      starts_at: new Date(e.dates.start.dateTime).toISOString(), ends_at: null, url: link(e.url), price_pence: pence(e.priceRanges?.[0]?.min),
+      starts_at: new Date(e.dates.start.dateTime).toISOString(), ends_at: null, url: e.url ?? null,
+      price_pence: pence(e.priceRanges?.[0]?.min), price_max_pence: pence(e.priceRanges?.[0]?.max), sold_out: false,
     }]
   })
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+/** A theatre's own box-office feed (see lib/theatres.ts). */
+async function theatre(t: Theatre): Promise<ExternalEvent[]> {
+  const base = `https://system.spektrix.com/${t.client}/api/v3`, today = new Date().toISOString().slice(0, 10)
+  const [shows, performances, plans] = await Promise.all([get(`${base}/events?instanceStart_from=${today}`), get(`${base}/instances?startFrom=${today}`), get(`${base}/plans`)])
+  // ponytail: the feed has no bulk form for seats left, so it is one small call per listed performance (about 100 per
+  // theatre a day), eight at a time, plus one per price list. A call that fails leaves that performance without the detail.
+  const boxOffice: BoxOffice = new Map(), lists = new Map<string, Promise<number[] | undefined>>(), kept = upcoming(t, shows, performances, plans)
+  const quiet = (url: string) => get(url).catch(() => null)
+  for (let i = 0; i < kept.length; i += 8) await Promise.all(kept.slice(i, i + 8).map(async p => {
+    const list = p.priceList ?? p.id
+    if (!lists.has(list)) lists.set(list, quiet(`${base}/instances/${p.id}/price-list`).then(d => d?.prices?.map((x: { amount: unknown }) => Number(x.amount)).filter(Number.isFinite)))
+    const [status, prices] = await Promise.all([quiet(`${base}/instances/${p.id}/status`), lists.get(list)])
+    boxOffice.set(p.id, { left: status?.capacity > 0 && typeof status.available === 'number' ? status.available : undefined, prices })
+  }))
+  return performanceDays(t, shows, performances, plans, undefined, boxOffice)
+}
+
 const CONNECTORS = [
   { name: 'Skiddle', key: process.env.SKIDDLE_API_KEY, run: skiddle },
   { name: 'Ticketmaster', key: process.env.TICKETMASTER_API_KEY, run: ticketmaster },
+  ...THEATRES.map(t => ({ name: t.source, key: 'open feed, no key', run: () => theatre(t) })),
 ]
 
 /** Pulls every configured source, keeps upcoming events inside the borough, and saves them. */
 export async function syncEvents(): Promise<string> {
   const active = CONNECTORS.filter(c => c.key)
-  if (!active.length) return 'No event sources are connected yet — add SKIDDLE_API_KEY or TICKETMASTER_API_KEY.'
   const report: string[] = []
   for (const c of active) {
     try {
-      const events = (await c.run(c.key!)).filter(e => inArea(e.lng, e.lat) && Date.parse(e.starts_at) > Date.now())
+      const found = (await c.run(c.key!)).filter(e => inArea(e.lng, e.lat) && Date.parse(e.starts_at) > Date.now())
+      // A paged source can list one event on two pages; the same id twice in one save is refused by the database.
+      // A link that is not a plain web address is dropped: the database would refuse the whole batch over it.
+      const events = [...new Map(found.map(e => [e.source_id, { ...e, url: e.url && e.url.length <= 300 && isWebLink(e.url) ? e.url : null }])).values()]
       await repo.importEvents(events)
       report.push(`${c.name}: ${events.length} events in ${HOOD.name}`)
     } catch (e) {

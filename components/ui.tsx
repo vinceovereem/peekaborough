@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { CATEGORIES, type Category } from '@/lib/config'
-import { isOpenNow } from '@/lib/hours'
+import { isOpenNow, formatPrices } from '@/lib/hours'
 import { LINE_COLOURS, PALE_LINES } from '@/lib/tfl'
-import type { Hours } from '@/lib/types'
+import type { Hours, Event } from '@/lib/types'
 
 export function Stars({ rating, count }: { rating: number | null; count?: number }) {
   if (rating == null) return <span className="muted text-sm">No reviews yet</span>
@@ -49,6 +49,15 @@ export function LinePills({ lines, status }: { lines: { id: string; name: string
 }
 
 export const VerifiedTag = () => <span className="tag bg-sky" title="The owner has been checked by our team">✓ Verified owner</span>
+/** Skiddle running out of tickets is not the whole event selling out: the venue may still sell on the door. */
+export const soldOutLabel = (e: Pick<Event, 'source'>) => e.source === 'Skiddle' ? 'No tickets on Skiddle' : 'Sold out'
+/** An event's price (or price range) and, when its source says so, that it has sold out. */
+export function EventTags({ e }: { e: Pick<Event, 'price_pence' | 'price_max_pence' | 'sold_out' | 'source'> }) {
+  return <>
+    {e.price_pence != null && <span className={`tag align-middle ${e.price_pence === 0 && !e.price_max_pence ? 'bg-grass' : 'bg-sun'}`}>{formatPrices(e.price_pence, e.price_max_pence)}</span>}
+    {e.sold_out && <> <span className="tag bg-tomato align-middle text-white">{soldOutLabel(e)}</span></>}
+  </>
+}
 export const SampleTag = () => <span className="tag border-dashed bg-white" title="Made-up content to show how this works">Sample</span>
 
 export function Flash({ ok, error }: { ok?: string; error?: string }) {

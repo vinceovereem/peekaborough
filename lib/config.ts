@@ -40,6 +40,15 @@ export const CATEGORIES = {
   transport: { label: 'Transport', emoji: '🚇', color: '#97aedb' },
 } as const
 export type Category = keyof typeof CATEGORIES
+
+/** Dogs welcome, by OpenStreetMap or the venue's own website (lib/place-sync.ts). */
+/** Folds a name or search into a plain form so "the hope and anchor" finds "Hope & Anchor" and "finks" finds "Fink's". */
+export const searchKey = (s: string) => ` ${s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f'’.]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ')} `.replace(/ the /g, ' ').replace(/ +/g, ' ').trim()
+
+export const dogFriendly = (p: { extra: { dogs?: boolean } }) => p.extra.dogs === true
+/** A café whose website welcomes laptops, or one with customer Wi-Fi that doesn't ban them. */
+export const laptopFriendly = (p: { category: Category; extra: { laptops?: boolean; wifi?: boolean } }) =>
+  p.extra.laptops === true || (p.category === 'cafe' && p.extra.wifi === true && p.extra.laptops !== false)
 export const CATEGORY_KEYS = Object.keys(CATEGORIES) as Category[]
 
 export const EVENT_KINDS = {
@@ -66,10 +75,18 @@ export type ListingKind = keyof typeof LISTING_KINDS
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
   ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000')
 
-/** Who runs the site; shown on the legal pages. */
-export const OPERATOR = { name: 'Vincent van Overeem', email: 'vincent.vanovereem@gmail.com' }
+/** London's 32 boroughs and the City, for the "which borough next?" poll in the footer. */
+export const LONDON_BOROUGHS = [
+  'Barking and Dagenham', 'Barnet', 'Bexley', 'Brent', 'Bromley', 'Camden', 'City of London', 'Croydon', 'Ealing', 'Enfield',
+  'Greenwich', 'Hackney', 'Hammersmith and Fulham', 'Haringey', 'Harrow', 'Havering', 'Hillingdon', 'Hounslow', 'Islington',
+  'Kensington and Chelsea', 'Kingston upon Thames', 'Lambeth', 'Lewisham', 'Merton', 'Newham', 'Redbridge', 'Richmond upon Thames',
+  'Southwark', 'Sutton', 'Tower Hamlets', 'Waltham Forest', 'Wandsworth', 'Westminster',
+] as const
+
+/** The site's contact address; shown on the legal pages. */
+export const OPERATOR = { email: 'peekaborough@v-cents.com' }
 /** Where would-be admins book a call after applying. */
-export const ADMIN_CALL_URL = 'https://calendar.app.google/B39DmXdXRpv8ZZzt8'
+export const ADMIN_CALL_URL = 'https://calendar.app.google/Ft5quHyq8kgWm1zE7'
 
 // Demo mode = no Supabase keys: data lives in memory, sign-in is one click. See README.
 export const DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL

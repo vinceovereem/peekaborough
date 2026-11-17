@@ -143,4 +143,18 @@ await denied(A, `select 1 where public.take_ask_turn()`, 'a thirty-first questio
 await allowed(B, `select 1 where public.take_ask_turn()`, "one person's questions do not use up another's")
 await denied(null, `select public.take_ask_turn()`, 'anon cannot ask')
 
-console.log('✔ migrations + seed apply cleanly; 81 access rules hold')
+// --- borough poll: one vote per signed-in person, through their own session ---
+const VOTE = (uid, b = 'Camden') => `insert into public.borough_votes (borough, user_id) values ('${b}', '${uid}') returning id`
+await denied(null, `insert into public.borough_votes (borough) values ('Camden') returning id`, 'anon votes')
+await denied(A, VOTE(B), 'vote as someone else')
+await allowed(A, VOTE(A), 'vote once')
+await denied(A, VOTE(A, 'Hackney'), 'vote a second time')
+await allowed(B, VOTE(B, 'Hackney'), 'another person votes')
+await denied(A, `select 1 from public.borough_votes where user_id = '${B}'`, "see someone else's vote")
+await allowed(A, `select 1 from public.borough_votes where user_id = '${A}'`, 'see your own vote')
+await denied(A, `update public.borough_votes set borough = 'Barnet' where user_id = '${A}'`, 'change your vote')
+await denied(A, `delete from public.borough_votes where user_id = '${A}'`, 'take your vote back')
+await denied(null, `select 1 from public.borough_votes`, 'anon reads the votes')
+await assert.rejects(db.exec(`insert into public.borough_votes (borough) values (' ')`), 'a blank name is refused')
+
+console.log('✔ migrations + seed apply cleanly; 93 access rules hold')

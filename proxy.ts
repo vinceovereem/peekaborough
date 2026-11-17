@@ -27,7 +27,8 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   // .ics feeds are fetched by calendar apps (published events only); the sync endpoint checks its own secret
-  if (pathname === '/calendar' || pathname === '/api/sync') return response
+  // the borough poll's results are counts only, shown under the poll in every footer
+  if (pathname === '/calendar' || pathname === '/api/sync' || pathname.startsWith('/api/sync/') || pathname === '/api/boroughs') return response
   // Readable by anyone, signed in or not: the guides, the legal pages and the files search engines ask for.
   if (['/privacy', '/terms', '/security', '/robots.txt', '/sitemap.xml', '/guides'].includes(pathname) || pathname.startsWith('/guides/')) return response
   // Signed-out visitors (and search engines) get the front page at the site's own address, not a redirect.
@@ -38,7 +39,7 @@ export async function proxy(request: NextRequest) {
   if (signedIn === isPublic && pathname !== '/auth/callback') {
     const url = request.nextUrl.clone()
     url.pathname = signedIn ? '/' : '/login'
-    url.search = ''
+    url.search = !signedIn && pathname === '/apply' ? '?next=/apply' : '' // the sign-in page then says why, and returns them here
     return NextResponse.redirect(url)
   }
   return response

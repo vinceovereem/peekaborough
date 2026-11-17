@@ -4,6 +4,7 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { createClient, createAdminClient, createPublicClient } from './supabase/server'
 import type { Repo } from './memory'
+import { tallyBoroughs } from './poll'
 import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication } from './types'
 
 function ok<T>({ data, error }: { data: T; error: PostgrestError | null }): NonNullable<T> {
@@ -34,7 +35,7 @@ export const supabaseRepo: Repo = {
   async place(slug) { return (await (await createClient()).from('places_view').select('*').eq('slug', slug).maybeSingle()).data as Place | null },
   async placeById(id) { return (await (await createClient()).from('places_view').select('*').eq('id', id).maybeSingle()).data as Place | null },
   async searchPlaces(q) {
-    const s = q.trim().replace(/[%_,()]/g, ' ')
+    const s = q.trim().replace(/[%_,()]/g, ' ').replace(/^the\s+/i, '').replace(/\s+(and|&)\s+|['’]/gi, '%') // "hope and anchor" finds "Hope & Anchor"
     if (s.length < 2) return []
     return ok(await (await createClient()).from('places_view').select('*').eq('status', 'published').ilike('name', `%${s}%`).limit(12)) as Place[]
   },
@@ -49,7 +50,7 @@ export const supabaseRepo: Repo = {
     return rows.map((r: any) => ({ ...r, author: author(r) })) as Review[]
   },
   async events(placeId) {
-    let q = (await createClient()).from('events').select('*, place:places(slug)').eq('status', 'published').gte('starts_at', soon()).order('starts_at').limit(300)
+    let q = (await createClient()).from('events').select('*, place:places(slug)').eq('status', 'published').gte('starts_at', soon()).order('starts_at').limit(1000)
     if (placeId) q = q.eq('place_id', placeId)
     return ok(await q) as Event[]
   },
@@ -129,6 +130,18 @@ export const supabaseRepo: Repo = {
     if (list.length) ok(await createAdminClient().from('events').upsert(list.map(e => ({ ...e, status: 'published' })), { onConflict: 'source,source_id' }).select('id'))
   },
   async deleteEvent(placeId, eventId) { ok(await (await createClient()).from('events').delete().eq('id', eventId).eq('place_id', placeId).select('id')) },
+  async placeIndex() {
+    const db = createAdminClient(), all: Awaited<ReturnType<Repo['placeIndex']>> = []
+    for (let from = 0; ; from += 1000) {
+      const page = ok(await db.from('places').select('id,osm_id,slug,name,category,subcategory,description,address,lat,lng,phone,website,booking_url,hours,hours_note,extra,is_landmark,verified,status').order('id').range(from, from + 999)) as typeof all
+      all.push(...page)
+      if (page.length < 1000) return all
+    }
+  },
+  async addPlaces(rows) {
+    for (let i = 0; i < rows.length; i += 200) ok(await createAdminClient().from('places').upsert(rows.slice(i, i + 200), { onConflict: 'osm_id', ignoreDuplicates: true }).select('id'))
+  },
+  async patchPlace(placeId, patch) { ok(await createAdminClient().from('places').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', placeId).select('id')) },
   async setGooglePlaceId(placeId, googleId) { ok(await createAdminClient().from('places').update({ google_place_id: googleId }).eq('id', placeId).select('id')) },
   async takeAskTurn() { return ok(await (await createClient()).rpc('take_ask_turn')) === true },
   async uploadCover(placeId, file) {
@@ -143,6 +156,20 @@ export const supabaseRepo: Repo = {
     return url
   },
 
+  async myBoroughVote(userId) {
+    return ((await (await createClient()).from('borough_votes').select('borough').eq('user_id', userId).maybeSingle()).data as { borough: string } | null)?.borough ?? null
+  },
+  async addBoroughVote(userId, borough) {
+    const { error } = await (await createClient()).from('borough_votes').insert({ borough, user_id: userId })
+    if (error?.code === '23505') return false // the one-vote-per-person index
+    if (error) throw new Error(error.message)
+    return true
+  },
+  async boroughTally() {
+    // Everyone's votes, so the service role reads them; only counts ever leave the server.
+    // ponytail: tallied here from up to 10k rows; switch to a group-by view once votes pass that
+    return tallyBoroughs((ok(await createAdminClient().from('borough_votes').select('borough').not('user_id', 'is', null).limit(10000)) as { borough: string }[]).map(r => r.borough))
+  },
   async adminData() {
     const db = createAdminClient()
     const count = async (table: string, filter?: [string, string | boolean]) => {
@@ -150,7 +177,7 @@ export const supabaseRepo: Repo = {
       if (filter) q = q.eq(filter[0], filter[1])
       return (await q).count ?? 0
     }
-    const [claims, pendingEvents, reviews, listings, wishes, applications, adminRows, emails] = await Promise.all([
+    const [claims, pendingEvents, reviews, listings, wishes, applications, adminRows, emails, boroughs] = await Promise.all([
       db.from('claims').select('*, place:places(name,slug,address,website), profiles(display_name)').order('created_at', { ascending: false }).limit(100),
       db.from('events').select('*').eq('status', 'pending').order('starts_at'),
       db.from('reviews').select('*, profiles(display_name), place:places(name,slug)').order('created_at', { ascending: false }).limit(30),
@@ -159,6 +186,7 @@ export const supabaseRepo: Repo = {
       db.from('admin_applications').select('*, profiles(display_name)').order('created_at', { ascending: false }).limit(100),
       db.from('profiles').select('id, display_name').eq('is_admin', true).order('created_at'),
       db.auth.admin.listUsers({ perPage: 1000 }), // ponytail: fine below 1000 users; look claimants up one by one after that
+      supabaseRepo.boroughTally(),
     ])
     const emailOf = new Map(emails.data?.users.map(u => [u.id, u.email ?? null]))
     return {
@@ -169,6 +197,7 @@ export const supabaseRepo: Repo = {
       wishes: ok(wishes).map((r: any) => ({ ...r, author: author(r), ...tally(r, null) })) as Wish[],
       applications: ok(applications).map((a: any) => ({ ...a, account: { name: author(a), email: emailOf.get(a.user_id) ?? null } })) as AdminApplication[],
       admins: ok(adminRows).map((p: any) => ({ id: p.id, name: p.display_name, email: emailOf.get(p.id) ?? null })),
+      boroughs,
       counts: {
         places: await count('places'), verified: await count('places', ['verified', true]), reviews: await count('reviews'),
         events: await count('events', ['status', 'published']), listings: await count('listings', ['status', 'active']), wishes: await count('wishes'),

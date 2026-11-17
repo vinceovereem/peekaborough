@@ -24,8 +24,9 @@ const ERRORS = new Map([
   ['callback', 'Sign-in did not complete, please try again'],
 ])
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
+  const { error, next } = await searchParams
+  const applying = next === '/apply'
   return (
     <main className="relative min-h-dvh">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED) }} />
@@ -42,8 +43,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <li key={title} className="flex gap-3"><span aria-hidden className="text-xl">{emoji}</span><span><b>{title}</b> <span className="muted">{rest}</span></span></li>
             ))}
           </ul>
-          <div className="mt-6"><Flash error={ERRORS.get(error ?? '')} /></div>
+          <div className="mt-6"><Flash error={ERRORS.get(error ?? '')} ok={applying ? 'Sign in with Google first — then you can apply to be an admin.' : undefined} /></div>
           <form action={googleSignIn}>
+              {applying && <input type="hidden" name="next" value="/apply" />}
               <button className="btn btn-white w-full text-lg">
                 <svg viewBox="0 0 48 48" className="size-5" aria-hidden><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.2 5.6c4.2-3.9 7.1-9.6 7.1-17.1z"/><path fill="#FBBC05" d="M10.5 28.6a14.5 14.5 0 0 1 0-9.2l-7.9-6.2a24 24 0 0 0 0 21.6l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.200-5.600c-2.200 1.500-5 2.300-8.700 2.300-6.300 0-11.600-4.200-13.500-9.900l-7.900 6.200C6.500 42.600 14.600 48 24 48z"/></svg>
                 Continue with Google

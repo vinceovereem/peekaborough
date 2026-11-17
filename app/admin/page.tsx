@@ -6,7 +6,10 @@ import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, LISTING_KINDS } from '@/lib/config'
 import { formatDay, formatTime } from '@/lib/hours'
-import { decideClaim, moderate, syncNow, decideApplication, addAdmin, removeAdmin } from '@/app/actions'
+import SubmitButton from '@/components/SubmitButton'
+
+export const maxDuration = 300 // "Refresh places" reads venue websites for up to about 3 minutes
+import { decideClaim, moderate, syncNow, syncPlacesNow, decideApplication, addAdmin, removeAdmin } from '@/app/actions'
 
 export const metadata = { title: 'Back office' }
 
@@ -22,6 +25,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const [flash, data] = await Promise.all([searchParams.then(readFlash), repo.adminData()])
   const pending = data.claims.filter(c => c.status === 'pending'), decided = data.claims.filter(c => c.status !== 'pending')
   const applying = data.applications.filter(a => a.status === 'pending'), applied = data.applications.filter(a => a.status !== 'pending')
+  const votes = data.boroughs.reduce((n, b) => n + b.votes, 0)
   return (
     <Shell title="Back office" intro="Verify owners, approve events and keep the neighbourhood friendly." flash={flash}>
       <dl className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -112,9 +116,22 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <p className="muted mt-2 text-sm">They need to have signed in to the site at least once. Admins can approve owners and events, hide content, and add or remove other admins.</p>
       </section>
 
+      <section className="card mb-10 p-4">
+        <h2 className="text-xl font-bold">🗳️ Which borough next? <span className="tag bg-sun align-middle">{votes} {votes === 1 ? 'vote' : 'votes'}</span></h2>
+        {data.boroughs.length === 0 ? <p className="muted mt-2 text-sm">No votes yet. The poll is in the footer of every page.</p> : (
+          <ol className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">{data.boroughs.map(b => (
+            <li key={b.borough} className="flex justify-between gap-2 border-b-2 border-dashed border-ink/15 py-1"><span>{b.borough}</span><b>{b.votes}</b></li>
+          ))}</ol>
+        )}
+      </section>
+
       <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">
-        <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🔌 Automatic event sources</h2><p className="muted text-sm">Skiddle and Ticketmaster listings inside the borough are fetched every morning. Residents and owners can still add events by hand.</p></div>
-        <form action={syncNow}><button className="btn btn-white">Sync now</button></form>
+        <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🔌 Automatic event sources</h2><p className="muted text-sm">Skiddle and Ticketmaster listings inside the borough, and the programmes of Park Theatre, King&apos;s Head Theatre and Little Angel Theatre, are fetched every morning. Residents and owners can still add events by hand.</p></div>
+        <form action={syncNow}><SubmitButton className="btn btn-white" busy="Syncing… about a minute">Sync now</SubmitButton></form>
+      </section>
+      <section className="card mb-10 flex flex-wrap items-center gap-3 p-4">
+        <div className="min-w-60 flex-1"><h2 className="text-xl font-bold">🗺️ Places</h2><p className="muted text-sm">Every Monday new venues are added from OpenStreetMap, and cafés, pubs and restaurants have their websites read (each about once a month) for whether dogs and laptops are welcome.</p></div>
+        <form action={syncPlacesNow}><SubmitButton className="btn btn-white" busy="Refreshing… up to 4 minutes">Refresh places</SubmitButton></form>
       </section>
 
       <section className="mb-10">

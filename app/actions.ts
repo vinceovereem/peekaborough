@@ -3,10 +3,11 @@ import { z } from 'zod'
 import { redirect } from 'next/navigation'
 import { flashTo as back } from '@/lib/flash'
 import { isWebLink } from '@/lib/links'
-import { requireUser, requireAdmin } from '@/lib/auth'
+import { getUser, requireUser, requireAdmin } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { syncEvents } from '@/lib/sources'
-import { HOOD, EVENT_KINDS, LISTING_KINDS } from '@/lib/config'
+import { syncPlaces } from '@/lib/place-sync'
+import { HOOD, EVENT_KINDS, LISTING_KINDS, LONDON_BOROUGHS } from '@/lib/config'
 import { DAY_KEYS, londonToISO } from '@/lib/hours'
 import type { Hours, User } from '@/lib/types'
 
@@ -124,6 +125,19 @@ export async function submitClaim(fd: FormData) {
   })
 }
 
+export type PollState = { voted?: string; error?: string }
+/** The footer's "which borough next?" poll: signed-in neighbours only, one vote each (the database enforces it). */
+export async function voteForBorough(_: PollState, fd: FormData): Promise<PollState> {
+  const user = await getUser()
+  if (!user) return { error: 'Sign in to vote.' }
+  const choice = String(fd.get('borough') ?? ''), other = String(fd.get('other') ?? '').trim().replace(/\s+/g, ' ')
+  const borough = choice === 'other' ? other : (LONDON_BOROUGHS as readonly string[]).includes(choice) ? choice : ''
+  if (choice === 'other' && (borough.length < 2 || borough.length > 60)) return { error: 'Type a place name (2 to 60 characters).' }
+  if (!borough) return { error: 'Pick a borough first.' }
+  try { return { voted: (await repo.addBoroughVote(user.id, borough)) ? borough : (await repo.myBoroughVote(user.id)) ?? borough } }
+  catch (e) { console.error(e); return { error: "That didn't save — please try again." } }
+}
+
 // ---------- verified owners ----------
 const placeId = z.object({ place_id: id })
 const manage = (pid: string) => `/business/${pid}`
@@ -211,6 +225,10 @@ export async function removeAdmin(fd: FormData) {
 export async function syncNow() {
   await requireAdmin()
   await back('/admin', 'ok', await syncEvents())
+}
+export async function syncPlacesNow() {
+  await requireAdmin()
+  await back('/admin', 'ok', await syncPlaces(Date.now() + 200_000))
 }
 const MODERATION = { reviews: ['visible', 'hidden'], listings: ['active', 'hidden'], wishes: ['visible', 'hidden'], events: ['published', 'rejected'], places: ['published', 'hidden'] } as const
 export async function moderate(fd: FormData) {

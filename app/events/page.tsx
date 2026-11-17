@@ -2,12 +2,12 @@ import Link from 'next/link'
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import CalendarPicker from '@/components/CalendarPicker'
-import { SampleTag, Empty, SignInPrompt } from '@/components/ui'
+import { SampleTag, EventTags, Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
 import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, HOOD, type EventKind } from '@/lib/config'
-import { formatDay, formatTime, formatPrice, dayKey } from '@/lib/hours'
+import { formatDay, formatTime, dayKey } from '@/lib/hours'
 import { googleCalendarUrl, outlookUrl } from '@/lib/calendar'
 import { suggestEvent } from '@/app/actions'
 import type { Event } from '@/lib/types'
@@ -16,13 +16,15 @@ export const metadata = { title: "What's on" }
 
 const KINDS = Object.keys(EVENT_KINDS) as EventKind[]
 
-export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; flash?: string }> }) {
-  const [user, { kinds = '', ...rest }] = await Promise.all([requireVisitor(), searchParams])
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; available?: string; flash?: string }> }) {
+  const [user, { kinds = '', available, ...rest }] = await Promise.all([requireVisitor(), searchParams])
   const flash = await readFlash(rest)
   const picked = KINDS.filter(k => kinds.split(',').includes(k)) // several can be on at once
-  const toggled = (k: EventKind) => { const next = picked.includes(k) ? picked.filter(x => x !== k) : [...picked, k]; return next.length ? `/events?kinds=${next.join(',')}` : '/events' }
+  const hideSoldOut = available === '1'
+  const href = (ks: EventKind[], hide: boolean) => { const q = [ks.length && `kinds=${ks.join(',')}`, hide && 'available=1'].filter(Boolean).join('&'); return q ? `/events?${q}` : '/events' }
+  const toggled = (k: EventKind) => href(picked.includes(k) ? picked.filter(x => x !== k) : [...picked, k], hideSoldOut)
   const all = await repo.events()
-  const events = picked.length ? all.filter(e => picked.includes(e.kind)) : all
+  const events = all.filter(e => (!picked.length || picked.includes(e.kind)) && !(hideSoldOut && e.sold_out))
   const days = Map.groupBy(events, (e: Event) => dayKey(e.starts_at))
   const nextMatch = all.find(e => e.kind === 'football')
 
@@ -36,9 +38,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       )}
       {/* one filter drives both the list below and what the calendar buttons add */}
       <nav className="mb-3 flex gap-1.5 overflow-x-auto pb-1" aria-label="Filter events">
-        <Link href="/events" scroll={false} className={`chip ${!picked.length ? 'chip-on' : ''}`}>Everything</Link>
+        <Link href={href([], hideSoldOut)} scroll={false} className={`chip ${!picked.length ? 'chip-on' : ''}`}>Everything</Link>
         {KINDS.map(k => <Link key={k} href={toggled(k)} scroll={false} aria-pressed={picked.includes(k)} className={`chip ${picked.includes(k) ? 'chip-on' : ''}`}>{EVENT_KINDS[k].emoji} {EVENT_KINDS[k].label}</Link>)}
       </nav>
+      <p className="mb-3"><Link href={href(picked, !hideSoldOut)} scroll={false} aria-pressed={hideSoldOut} className={`chip ${hideSoldOut ? 'chip-on' : ''}`}>🎫 Hide sold out</Link></p>
       <CalendarPicker kinds={picked} />
 
       {events.length === 0 ? <Empty>Nothing in the diary for this yet.</Empty> : (
@@ -46,10 +49,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           <section key={day} className="grid gap-3 sm:grid-cols-[110px_1fr]">
             <h2 className="font-display text-xl font-bold sm:pt-3">{formatDay(list[0].starts_at)}</h2>
             <ul className="space-y-2">{list.map(e => (
-              <li key={e.id} className="card flex items-start gap-3 p-3">
+              <li key={e.id} id={`e-${e.id}`} className="card flex scroll-mt-24 items-start gap-3 p-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl border-2 border-ink bg-sun text-xl" aria-hidden>{EVENT_KINDS[e.kind].emoji}</span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-lg leading-tight font-bold">{e.title} {e.price_pence != null && <span className={`tag align-middle ${e.price_pence === 0 ? 'bg-grass' : 'bg-sun'}`}>{formatPrice(e.price_pence)}</span>} {e.is_sample && <SampleTag />}</h3>
+                  <h3 className="text-lg leading-tight font-bold">{e.title} <EventTags e={e} /> {e.is_sample && <SampleTag />}</h3>
                   <p className="text-sm font-bold">{formatTime(e.starts_at)} · <Link className="underline" href={e.place ? `/?place=${e.place.slug}` : `/?event=${e.id}`} title="See it on the map">📍 {e.venue_name}</Link></p>
                   {e.description && <p className="muted mt-1 text-sm">{e.description}</p>}
                   {e.url && <a href={e.url} target="_blank" rel="noreferrer" className="text-sm font-bold underline">{e.source ? `Tickets & details on ${e.source} ↗` : 'More info ↗'}</a>}

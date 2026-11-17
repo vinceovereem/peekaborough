@@ -6,7 +6,17 @@ export type Hours = Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 export type User = { id: string; name: string; email: string | null; avatar_url: string | null; is_admin: boolean; /** has at least one verified business page */ is_owner: boolean }
 
 /** Facts that come from imports rather than the owner. */
-export type PlaceExtra = { lines?: { id: string; name: string }[]; outdoor_seating?: boolean; photo?: { url: string; credit_url: string } }
+export type PlaceExtra = {
+  lines?: { id: string; name: string }[]; outdoor_seating?: boolean; photo?: { url: string; credit_url: string }
+  /** Dogs allowed (true) or not (false): from OpenStreetMap's dog tag or the venue's own website. */
+  dogs?: boolean
+  /** Wi-Fi for customers, from OpenStreetMap's internet_access tag. */
+  wifi?: boolean
+  /** The venue's website welcomes laptops / remote work (true) or bans them (false). */
+  laptops?: boolean
+  /** When the monthly scan last read the website (ISO date), and the page a dogs/laptops answer came from. */
+  web_checked?: string; web_source?: string
+}
 
 export type Place = {
   id: string; osm_id: string | null; slug: string; name: string; category: Category; subcategory: string | null
@@ -16,6 +26,9 @@ export type Place = {
   status: 'published' | 'hidden'
   rating: number | null; review_count: number
 }
+/** What the weekly refresh (lib/place-sync.ts) reads and may change. */
+export type PlaceIndexRow = Omit<Place, 'cover_url' | 'google_place_id' | 'is_demo' | 'rating' | 'review_count'>
+export type PlacePatch = Partial<Pick<Place, 'name' | 'category' | 'subcategory' | 'description' | 'address' | 'lat' | 'lng' | 'phone' | 'website' | 'booking_url' | 'hours' | 'hours_note' | 'is_landmark' | 'extra' | 'status'>>
 export type MapPlace = Pick<Place, 'id' | 'slug' | 'name' | 'category' | 'subcategory' | 'address' | 'lat' | 'lng' | 'hours' | 'cover_url' | 'extra' | 'is_landmark' | 'is_demo' | 'verified' | 'rating' | 'review_count'>
 
 export type MenuItem = { id: string; place_id: string; section: string; name: string; description: string | null; price_pence: number | null; position: number }
@@ -23,6 +36,10 @@ export type Post = { id: string; place_id: string; title: string; body: string; 
 export type Event = {
   id: string; place_id: string | null; title: string; description: string | null; kind: EventKind
   venue_name: string; lat: number; lng: number; starts_at: string; ends_at: string | null; url: string | null; price_pence: number | null
+  /** The dearest ticket, when a source gives a range. */
+  price_max_pence?: number | null
+  /** True only when the source says no tickets are left. */
+  sold_out?: boolean
   is_sample: boolean; status: 'published' | 'pending' | 'rejected'; created_by: string | null
   /** Set when the event was pulled in automatically (e.g. "Skiddle"); null for ones people added. */
   source: string | null
@@ -38,6 +55,7 @@ export type AdminApplication = {
   /** the account that applied, as it appears on the site */
   account?: { name: string; email: string | null }
 }
+export type BoroughTally = { borough: string; votes: number }
 export type AdminUser = { id: string; name: string; email: string | null }
 
 export type Claim = {

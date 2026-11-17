@@ -5,8 +5,10 @@
 // and lib/supabase-repo.ts takes over with the same interface.
 import rawPlaces from '@/data/places.json'
 import { DEMO_USERS, realEvents } from '@/data/demo'
-import type { Place, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser } from './types'
+import type { Place, PlaceIndexRow, PlacePatch, MapPlace, MenuItem, Post, Review, Event, Listing, Wish, Claim, AdminApplication, AdminUser, BoroughTally } from './types'
 import type { ExternalEvent } from './sources'
+import { tallyBoroughs } from './poll'
+import { searchKey } from './config'
 
 type Row = Omit<Place, 'rating' | 'review_count'>
 type WishRow = Omit<Wish, 'author' | 'ups' | 'downs' | 'mine'> & { votes: Record<string, 1 | -1> }
@@ -16,7 +18,7 @@ function init() {
     owners: new Set<string>(), menu: [] as MenuItem[], posts: [] as Post[], reviews: [] as Review[],
     events: realEvents(), listings: [] as Listing[], wishes: [] as WishRow[], claims: [] as Claim[],
     names: Object.fromEntries(DEMO_USERS.map(u => [u.id, u.name])) as Record<string, string>,
-    favorites: new Set<string>(), applications: [] as AdminApplication[],
+    favorites: new Set<string>(), applications: [] as AdminApplication[], boroughVotes: [] as { borough: string; user_id: string | null }[],
   }
 }
 const g = globalThis as unknown as { __patch?: ReturnType<typeof init> }
@@ -48,8 +50,8 @@ export const memoryRepo = {
   async place(slug: string): Promise<Place | null> { const p = db().places.find(p => p.slug === slug); return p ? withRating(p) : null },
   async placeById(pid: string): Promise<Place | null> { const p = db().places.find(p => p.id === pid); return p ? withRating(p) : null },
   async searchPlaces(q: string): Promise<Place[]> {
-    const s = q.trim().toLowerCase()
-    return s.length < 2 ? [] : db().places.filter(p => p.status === 'published' && p.name.toLowerCase().includes(s)).slice(0, 12).map(withRating)
+    const s = searchKey(q)
+    return s.length < 2 ? [] : db().places.filter(p => p.status === 'published' && searchKey(p.name).includes(s)).slice(0, 12).map(withRating)
   },
   async menu(placeId: string): Promise<MenuItem[]> { return db().menu.filter(m => m.place_id === placeId).sort((a, b) => a.position - b.position) },
   async posts(placeId: string): Promise<Post[]> { return newest(db().posts.filter(p => p.place_id === placeId)) },
@@ -133,13 +135,28 @@ export const memoryRepo = {
     asked.set(userId, [...times, Date.now()])
     return true
   },
+  /** Every place's imported facts, for the weekly refresh (lib/place-sync.ts). */
+  async placeIndex(): Promise<PlaceIndexRow[]> { return db().places.map(p => ({ ...p })) },
+  /** New places from OpenStreetMap; one already known (same osm_id) is left alone. */
+  async addPlaces(rows: Row[]) { const known = new Set(db().places.map(p => p.osm_id)); db().places.push(...rows.filter(r => !known.has(r.osm_id))) },
+  async patchPlace(placeId: string, patch: PlacePatch) { Object.assign(db().places.find(p => p.id === placeId)!, patch) },
   /** Remembers which Google Maps listing a place is, so it's only looked up once. */
   async setGooglePlaceId(placeId: string, googleId: string) { db().places.find(p => p.id === placeId)!.google_place_id = googleId },
   /** Stores the photo and puts it on the place's page. Returns its public URL, or null when photo storage isn't available (demo mode). */
   async uploadCover(placeId: string, file: File): Promise<string | null> { void placeId; void file; return null },
 
+  /** The borough this person picked in the "which borough next?" poll, if they have voted. */
+  async myBoroughVote(userId: string): Promise<string | null> { return db().boroughVotes.find(v => v.user_id === userId)?.borough ?? null },
+  /** One vote per person; the caller has validated the name. Returns false if they had already voted. */
+  async addBoroughVote(userId: string, borough: string): Promise<boolean> {
+    if (db().boroughVotes.some(v => v.user_id === userId)) return false
+    db().boroughVotes.push({ borough, user_id: userId }); return true
+  },
+  /** Counts signed-in votes only; anonymous ones from before votes needed an account are ignored. */
+  async boroughTally(): Promise<BoroughTally[]> { return tallyBoroughs(db().boroughVotes.filter(v => v.user_id).map(v => v.borough)) },
+
   // --- admin (callers must check requireAdmin first) ---
-  async adminData(): Promise<{ claims: Claim[]; pendingEvents: Event[]; reviews: Review[]; listings: Listing[]; wishes: Wish[]; applications: AdminApplication[]; admins: AdminUser[]; counts: Record<'places' | 'verified' | 'reviews' | 'events' | 'listings' | 'wishes', number> }> {
+  async adminData(): Promise<{ claims: Claim[]; pendingEvents: Event[]; reviews: Review[]; listings: Listing[]; wishes: Wish[]; applications: AdminApplication[]; admins: AdminUser[]; boroughs: BoroughTally[]; counts: Record<'places' | 'verified' | 'reviews' | 'events' | 'listings' | 'wishes', number> }> {
     const d = db()
     return {
       claims: newest(d.claims).map(toClaim),
@@ -149,6 +166,7 @@ export const memoryRepo = {
       wishes: newest(d.wishes).slice(0, 30).map(w => toWish(w, null)),
       applications: newest(d.applications).map(a => ({ ...a, account: { name: d.names[a.user_id] ?? 'Neighbour', email: null } })),
       admins: DEMO_USERS.filter(u => u.is_admin).map(u => ({ id: u.id, name: u.name, email: u.email })),
+      boroughs: await memoryRepo.boroughTally(),
       counts: { places: d.places.length, verified: d.places.filter(p => p.verified).length, reviews: d.reviews.length, events: d.events.filter(e => e.status === 'published' && upcoming(e)).length, listings: d.listings.filter(l => l.status === 'active').length, wishes: d.wishes.length },
     }
   },

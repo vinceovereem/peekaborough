@@ -27,6 +27,8 @@ export function isOpenNow(hours: Hours | null, now = new Date()): boolean | null
 }
 
 export const formatPrice = (pence: number | null) => pence == null ? '' : pence === 0 ? 'Free' : `£${(pence / 100).toFixed(2).replace(/\.00$/, '')}`
+/** "£12", or "£12–£35" when the dearest ticket is known and costs more. */
+export const formatPrices = (from: number | null, to?: number | null) => from != null && to != null && to > from ? `${formatPrice(from)}–${formatPrice(to)}` : formatPrice(from)
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' })
 const timeFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true })

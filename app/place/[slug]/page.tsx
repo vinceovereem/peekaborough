@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import Nav from '@/components/Nav'
 import PlacePicture from '@/components/PlacePicture'
 import SubmitButton from '@/components/SubmitButton'
-import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills, Flash, Empty, SignInPrompt } from '@/components/ui'
+import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, EventTags, LinePills, Flash, Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
 import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
@@ -12,7 +12,7 @@ import { googlePlace } from '@/lib/google'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
 import { lineStatus } from '@/lib/tfl'
 import { sunTimes } from '@/lib/sun'
-import { EVENT_KINDS } from '@/lib/config'
+import { EVENT_KINDS, dogFriendly, laptopFriendly } from '@/lib/config'
 import { DAY_KEYS, DAY_LABELS, londonNow, formatPrice, formatDay, formatTime } from '@/lib/hours'
 import { addReview, moderate, toggleFavorite } from '@/app/actions'
 
@@ -63,7 +63,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
             <div className="mb-2 flex flex-wrap gap-1.5">
               <CategoryTag category={place.category} sub={place.subcategory} />
               {place.hours ? <OpenBadge hours={place.hours} now={now} /> : google?.currentOpeningHours?.openNow != null && <span className={`tag ${google.currentOpeningHours.openNow ? 'bg-grass' : 'bg-ink/10'}`}>{google.currentOpeningHours.openNow ? 'Open now' : 'Closed now'}</span>}
-              {place.verified && <VerifiedTag />}{place.is_demo && <SampleTag />}{place.extra.outdoor_seating && <span className="tag bg-sun">☀️ Outdoor seats</span>}
+              {place.verified && <VerifiedTag />}{place.is_demo && <SampleTag />}{place.extra.outdoor_seating && <span className="tag bg-sun">☀️ Outdoor seats</span>}{dogFriendly(place) && <span className="tag bg-sun">🐶 Dogs welcome</span>}{laptopFriendly(place) && <span className="tag bg-sun">💻 Laptop friendly</span>}
               {place.status === 'hidden' && <span className="tag bg-tomato text-white">Hidden from the map</span>}
             </div>
             <h1 className="text-3xl leading-tight font-bold sm:text-5xl">{place.name}</h1>
@@ -111,7 +111,7 @@ export default async function PlacePage({ params, searchParams }: Props) {
               <ul className="space-y-2">{events.slice(0, 8).map(e => (
                 <li key={e.id} className="card flex items-start gap-3 p-3">
                   <span className="tag shrink-0 bg-sun">{formatDay(e.starts_at)} · {formatTime(e.starts_at)}</span>
-                  <span><b>{EVENT_KINDS[e.kind].emoji} {e.title}</b> {e.price_pence != null && <span className="tag bg-grass">{formatPrice(e.price_pence)}</span>} {e.is_sample && <SampleTag />}{e.description && <span className="muted block text-sm">{e.description}</span>}</span>
+                  <span><b>{EVENT_KINDS[e.kind].emoji} {e.title}</b> <EventTags e={e} /> {e.is_sample && <SampleTag />}{e.description && <span className="muted block text-sm">{e.description}</span>}</span>
                 </li>
               ))}</ul>
               <Link href="/events" className="mt-2 inline-block text-sm font-bold underline">Add these to your calendar →</Link>
