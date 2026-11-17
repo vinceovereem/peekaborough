@@ -157,6 +157,9 @@ export const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(
 
 export type OsmPlace = ReturnType<typeof toPlaces>[number]
 
+// Mappers sometimes leave off the "https://". The database only accepts web addresses, so add it or drop the value.
+export const web = (v?: string) => !v || /\s/.test(v) ? null : /^https?:\/\//i.test(v) ? v : /^[a-z][a-z0-9+.-]*:/i.test(v) ? null : `https://${v}`
+
 /**
  * Named elements inside the area, as place rows (no station lines or photos: the full import adds those).
  * `known` maps osm_id -> our id so re-imports keep ids; `slugs` holds slugs already taken.
@@ -182,8 +185,8 @@ export function toPlaces(elements: OsmElement[], inside: (lng: number, lat: numb
       address: [[t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' '), t['addr:postcode']].filter(Boolean).join(', ') || null,
       lat: +lat.toFixed(6), lng: +lng.toFixed(6),
       phone: (t.phone ?? t['contact:phone'] ?? null) as string | null,
-      website: (t.website ?? t['contact:website'] ?? null) as string | null, // tags may be missing
-      booking_url: [t['reservation:website'], t['website:booking'], t['booking']].find(v => /^https?:\/\//.test(v ?? '')) ?? null,
+      website: web(t.website ?? t['contact:website']), // tags may be missing
+      booking_url: [t['reservation:website'], t['website:booking'], t['booking']].find(v => /^https?:\/\/\S+$/i.test(v ?? '')) ?? null,
       hours, hours_note: hours ? null : t.opening_hours ?? null,
       cover_url: null, google_place_id: null, extra: osmFacts(t) as PlaceExtra, is_landmark: false, is_demo: false, verified: false, status: 'published' as const,
       ...(landmark && { is_landmark: true, ...landmark }),

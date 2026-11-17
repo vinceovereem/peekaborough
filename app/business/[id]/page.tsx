@@ -4,6 +4,7 @@ import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import { Empty } from '@/components/ui'
 import { requireUser } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { DEMO, EVENT_KINDS, type EventKind } from '@/lib/config'
 import { DAY_KEYS, DAY_LABELS, formatPrice, formatDay, formatTime } from '@/lib/hours'
@@ -11,8 +12,8 @@ import { savePlace, addMenuItem, addPost, addPlaceEvent, removeFromPlace } from 
 
 export const metadata = { title: 'Manage your page' }
 
-export default async function ManagePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, { id }, flash] = await Promise.all([requireUser(), params, searchParams])
+export default async function ManagePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ flash?: string }> }) {
+  const [user, { id }, flash] = await Promise.all([requireUser(), params, searchParams.then(readFlash)])
   const place = /^[0-9a-f-]{36}$/.test(id) ? await repo.placeById(id) : null
   if (!place || !(await repo.isOwner(user.id, place.id))) notFound() // owners only — the actions and the database check again
   const [menu, posts, events] = await Promise.all([repo.menu(place.id), repo.posts(place.id), repo.events(place.id)])

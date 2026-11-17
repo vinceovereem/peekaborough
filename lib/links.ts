@@ -39,6 +39,9 @@ export function sameName(a: string, b: string): boolean {
   return small.length - matched.length === 1 && matched.length >= 2 && matched.some(w => !LOCAL.has(w))
 }
 
+/** A plain http(s) address with no spaces or line breaks: the only kind of link the site stores or prints. */
+export const isWebLink = (s: string) => /^https?:\/\/\S+$/i.test(s) && URL.canParse(s)
+
 type P = Pick<Place, 'name' | 'address' | 'lat' | 'lng'> & { google_place_id?: string | null }
 // Plain Google Maps URLs: free, no API key, and they open the Google Maps app on a phone.
 export const googleMapsUrl = (p: P) =>

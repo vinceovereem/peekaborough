@@ -5,6 +5,7 @@
 // way to list Eventbrite events is for the organiser to add them (or their Eventbrite link) by hand.
 import { APP_NAME, SITE_URL, HOOD, inArea, type EventKind } from './config'
 import { repo } from './repo'
+import { isWebLink } from './links'
 import { THEATRES, upcoming, performanceDays, type Theatre, type BoxOffice } from './theatres'
 import type { Event } from './types'
 
@@ -106,7 +107,8 @@ export async function syncEvents(): Promise<string> {
     try {
       const found = (await c.run(c.key!)).filter(e => inArea(e.lng, e.lat) && Date.parse(e.starts_at) > Date.now())
       // A paged source can list one event on two pages; the same id twice in one save is refused by the database.
-      const events = [...new Map(found.map(e => [e.source_id, e])).values()]
+      // A link that is not a plain web address is dropped: the database would refuse the whole batch over it.
+      const events = [...new Map(found.map(e => [e.source_id, { ...e, url: e.url && e.url.length <= 300 && isWebLink(e.url) ? e.url : null }])).values()]
       await repo.importEvents(events)
       report.push(`${c.name}: ${events.length} events in ${HOOD.name}`)
     } catch (e) {

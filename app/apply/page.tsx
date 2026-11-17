@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import { requireUser } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { ADMIN_CALL_URL, APP_NAME, HOOD } from '@/lib/config'
 import { formatDay } from '@/lib/hours'
@@ -9,8 +10,8 @@ import { applyAsAdmin } from '@/app/actions'
 
 export const metadata = { title: 'Apply to be an admin' }
 
-export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, flash] = await Promise.all([requireUser(), searchParams])
+export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ flash?: string }> }) {
+  const [user, flash] = await Promise.all([requireUser(), searchParams.then(readFlash)])
   const application = await repo.myApplication(user.id)
   const pending = application?.status === 'pending'
   return (

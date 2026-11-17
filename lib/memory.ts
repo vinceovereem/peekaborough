@@ -36,6 +36,8 @@ const toWish = (w: WishRow, userId: string | null): Wish =>
   ({ id: w.id, user_id: w.user_id, title: w.title, description: w.description, status: w.status, created_at: w.created_at, author: db().names[w.user_id] ?? 'Neighbour',
     ups: Object.values(w.votes).filter(v => v === 1).length, downs: Object.values(w.votes).filter(v => v === -1).length, mine: (userId && w.votes[userId]) || 0 })
 const toClaim = (c: Claim): Claim => ({ ...c, place: placeRef(c.place_id), claimant: { name: db().names[c.user_id] ?? 'Neighbour', email: DEMO_USERS.find(u => u.id === c.user_id)?.email ?? null } })
+// ponytail: the preview copy counts Ask questions per server instance; the live site counts them in the database.
+const asked = new Map<string, number[]>()
 const upcoming = (e: Event) => new Date(e.ends_at ?? e.starts_at).getTime() > Date.now() - 3 * 3600_000
 
 export const memoryRepo = {
@@ -109,7 +111,7 @@ export const memoryRepo = {
     if (db().claims.some(x => x.place_id === c.place_id && x.user_id === user.id && x.status === 'pending')) return
     db().claims.push({ ...c, id: id(), user_id: user.id, status: 'pending', admin_note: null, created_at: now() })
   },
-  async updatePlace(placeId: string, patch: Partial<Pick<Place, 'name' | 'subcategory' | 'description' | 'address' | 'phone' | 'website' | 'booking_url' | 'hours' | 'hours_note' | 'cover_url'>>) {
+  async updatePlace(placeId: string, patch: Partial<Pick<Place, 'name' | 'subcategory' | 'description' | 'address' | 'phone' | 'website' | 'booking_url' | 'hours' | 'hours_note'>>) {
     Object.assign(db().places.find(p => p.id === placeId)!, patch)
   },
   async addMenuItem(placeId: string, m: Pick<MenuItem, 'section' | 'name' | 'description' | 'price_pence'>) { db().menu.push({ ...m, id: id(), place_id: placeId, position: db().menu.length }) },
@@ -126,6 +128,13 @@ export const memoryRepo = {
     }
   },
   async deleteEvent(placeId: string, eventId: string) { db().events = db().events.filter(e => !(e.id === eventId && e.place_id === placeId)) },
+  /** Counts one Ask question against the person's 30 an hour; false when they have used them up. */
+  async takeAskTurn(userId: string): Promise<boolean> {
+    const times = (asked.get(userId) ?? []).filter(t => t > Date.now() - 3600_000)
+    if (times.length >= 30) return false
+    asked.set(userId, [...times, Date.now()])
+    return true
+  },
   /** Every place's imported facts, for the weekly refresh (lib/place-sync.ts). */
   async placeIndex(): Promise<PlaceIndexRow[]> { return db().places.map(p => ({ ...p })) },
   /** New places from OpenStreetMap; one already known (same osm_id) is left alone. */
@@ -133,7 +142,7 @@ export const memoryRepo = {
   async patchPlace(placeId: string, patch: PlacePatch) { Object.assign(db().places.find(p => p.id === placeId)!, patch) },
   /** Remembers which Google Maps listing a place is, so it's only looked up once. */
   async setGooglePlaceId(placeId: string, googleId: string) { db().places.find(p => p.id === placeId)!.google_place_id = googleId },
-  /** Returns a public URL, or null when photo storage isn't available (demo mode). */
+  /** Stores the photo and puts it on the place's page. Returns its public URL, or null when photo storage isn't available (demo mode). */
   async uploadCover(placeId: string, file: File): Promise<string | null> { void placeId; void file; return null },
 
   /** The borough this person picked in the "which borough next?" poll, if they have voted. */

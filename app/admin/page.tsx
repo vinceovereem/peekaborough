@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Shell from '@/components/Shell'
 import { Stars, Empty, SampleTag } from '@/components/ui'
 import { requireAdmin } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, LISTING_KINDS } from '@/lib/config'
 import { formatDay, formatTime } from '@/lib/hours'
@@ -19,9 +20,9 @@ function Toggle({ table, id, on, onValue, offValue, labels }: { table: string; i
   )
 }
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ flash?: string }> }) {
   const me = await requireAdmin()
-  const [flash, data] = await Promise.all([searchParams, repo.adminData()])
+  const [flash, data] = await Promise.all([searchParams.then(readFlash), repo.adminData()])
   const pending = data.claims.filter(c => c.status === 'pending'), decided = data.claims.filter(c => c.status !== 'pending')
   const applying = data.applications.filter(a => a.status === 'pending'), applied = data.applications.filter(a => a.status !== 'pending')
   const votes = data.boroughs.reduce((n, b) => n + b.votes, 0)

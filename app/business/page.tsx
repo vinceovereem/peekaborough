@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Shell from '@/components/Shell'
 import { CategoryTag, VerifiedTag, Stars, Empty } from '@/components/ui'
 import { requireUser } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { formatDay } from '@/lib/hours'
 
@@ -10,8 +11,9 @@ export const metadata = { title: 'My businesses' }
 const SHORTCUTS = [['basics', 'Details & hours'], ['news', 'Post news'], ['events', 'Add an event'], ['menu', 'Menu & prices']] as const
 const STATUS = { pending: ['bg-sun', '⏳ Being checked'], approved: ['bg-grass', '✓ Approved'], rejected: ['bg-tomato text-white', '✕ Not approved'] } as const
 
-export default async function BusinessPage({ searchParams }: { searchParams: Promise<{ q?: string; ok?: string; error?: string }> }) {
-  const [user, { q = '', ...flash }] = await Promise.all([requireUser(), searchParams])
+export default async function BusinessPage({ searchParams }: { searchParams: Promise<{ q?: string; flash?: string }> }) {
+  const [user, { q = '', ...rest }] = await Promise.all([requireUser(), searchParams])
+  const flash = await readFlash(rest)
   const [places, claims, results] = await Promise.all([repo.myPlaces(user.id), repo.myClaims(user.id), repo.searchPlaces(q)])
   const claimFlow = (
     <>

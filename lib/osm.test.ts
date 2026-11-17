@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { answerProblem, osmFacts, planRefresh, readWebsite } from './osm.ts'
+import { answerProblem, osmFacts, planRefresh, readWebsite, web } from './osm.ts'
 
 test('reads what a venue says about dogs and laptops', () => {
   assert.deepEqual(readWebsite('Well-behaved dogs are always welcome in the bar.'), { dogs: true })
@@ -42,4 +42,10 @@ test('turns down stale or cut-short Overpass answers', () => {
   assert.match(answerProblem({ elements: [] }, now)!, /stale/)
   assert.match(answerProblem({ elements: [], remark: 'runtime error: Query timed out', osm3s: fresh }, now)!, /incomplete/)
   assert.match(answerProblem(null, now)!, /unreadable/)
+})
+
+test('websites become web addresses the database accepts, or nothing', () => {
+  assert.equal(web('www.example.co.uk'), 'https://www.example.co.uk')
+  assert.equal(web('http://example.com/a'), 'http://example.com/a')
+  for (const bad of [undefined, '', 'javascript:alert(1)', 'mailto:a@example.com', 'example.com/a b']) assert.equal(web(bad), null)
 })

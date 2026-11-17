@@ -1,6 +1,8 @@
 'use server'
 import { z } from 'zod'
 import { redirect } from 'next/navigation'
+import { flashTo as back } from '@/lib/flash'
+import { isWebLink } from '@/lib/links'
 import { getUser, requireUser, requireAdmin } from '@/lib/auth'
 import { repo } from '@/lib/repo'
 import { syncEvents } from '@/lib/sources'
@@ -19,10 +21,8 @@ const slug = z.string().regex(/^[a-z0-9-]{1,140}$/)
 const keys = <T extends object>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a date')
 const time = z.string().regex(/^\d{2}:\d{2}$/, 'Pick a time')
-
-function back(path: string, kind: 'ok' | 'error', message: string): never {
-  redirect(`${path}?${kind}=${encodeURIComponent(message)}`)
-}
+/** An optional link: empty, or a plain http(s) address (the database refuses anything else too). */
+const link = (message: string) => z.string().trim().max(300, message).refine(v => v === '' || isWebLink(v), message)
 
 /** An error whose message is safe and useful to show to the person who caused it. */
 class Friendly extends Error {}
@@ -33,11 +33,15 @@ async function act<S extends z.ZodType>(fd: FormData, schema: S, run: (data: z.o
   const from = String(fd.get('_from') ?? '') // where the form lives; only ever a plain internal path
   const errorPath = /^(\/[a-z0-9-]+)+$/.test(from) ? from : '/'
   const parsed = schema.safeParse(Object.fromEntries(fd))
-  if (!parsed.success) back(errorPath, 'error', parsed.error.issues[0].message)
+  if (!parsed.success) return back(errorPath, 'error', parsed.error.issues[0].message)
   let result
   try { result = await run(parsed.data, user) }
-  catch (e) { console.error(e); back(errorPath, 'error', e instanceof Friendly ? e.message : "That didn't save — please try again.") }
-  back(result.path, 'ok', result.ok)
+  catch (e) {
+    console.error(e)
+    // "daily limit reached" is raised by the database (see the daily_limit trigger in supabase/migrations)
+    return back(errorPath, 'error', e instanceof Friendly ? e.message : e instanceof Error && e.message.includes('daily limit') ? "That's a lot for one day — please come back tomorrow." : "That didn't save — please try again.")
+  }
+  return back(result.path, 'ok', result.ok)
 }
 
 async function mustOwn(user: User, placeId: string) {
@@ -105,7 +109,7 @@ export async function saveProfile(fd: FormData) {
 }
 
 export async function suggestEvent(fd: FormData) {
-  return act(fd, z.object({ title: text(120, 'a title'), description: optional(2000), kind: z.enum(keys(EVENT_KINDS)), venue: text(120, 'where it is'), date, time, price, url: z.union([z.url('That link does not look right'), z.literal('')]) }), async (d, user) => {
+  return act(fd, z.object({ title: text(120, 'a title'), description: optional(2000), kind: z.enum(keys(EVENT_KINDS)), venue: text(120, 'where it is'), date, time, price, url: link('That link does not look right') }), async (d, user) => {
     // ponytail: pins the event on a place whose name matches the venue, else the middle of the
     // neighbourhood. Add a "drop a pin" picker when residents start suggesting lots of street events.
     const [match] = await repo.searchPlaces(d.venue)
@@ -139,7 +143,7 @@ const placeId = z.object({ place_id: id })
 const manage = (pid: string) => `/business/${pid}`
 
 export async function savePlace(fd: FormData) {
-  const schema = placeId.extend({ name: text(120, 'the name'), subcategory: optional(60), description: optional(2000), address: optional(200), phone: optional(40), website: z.union([z.url('That website address does not look right'), z.literal('')]), booking_url: z.union([z.url('That booking link does not look right'), z.literal('')]), hours_note: optional(300) })
+  const schema = placeId.extend({ name: text(120, 'the name'), subcategory: optional(60), description: optional(2000), address: optional(200), phone: optional(40), website: link('That website address does not look right'), booking_url: link('That booking link does not look right'), hours_note: optional(300) })
   return act(fd, schema, async (d, user) => {
     await mustOwn(user, d.place_id)
     const hours = Object.fromEntries(DAY_KEYS.map(day => {
@@ -152,7 +156,7 @@ export async function savePlace(fd: FormData) {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(cover.type) || cover.size > 4_000_000) throw new Friendly('The photo must be a JPG, PNG or WebP under 4 MB.')
       cover_url = await repo.uploadCover(d.place_id, cover)
     }
-    await repo.updatePlace(d.place_id, { name: d.name, subcategory: d.subcategory, description: d.description, address: d.address, phone: d.phone, website: d.website || null, booking_url: d.booking_url || null, hours_note: d.hours_note, hours, ...(cover_url && { cover_url }) })
+    await repo.updatePlace(d.place_id, { name: d.name, subcategory: d.subcategory, description: d.description, address: d.address, phone: d.phone, website: d.website || null, booking_url: d.booking_url || null, hours_note: d.hours_note, hours })
     return { path: manage(d.place_id), ok: cover_url === null ? 'Saved. (Photo uploads switch on once the database is connected.)' : 'Saved — your page is updated.' }
   })
 }
@@ -220,11 +224,11 @@ export async function removeAdmin(fd: FormData) {
 }
 export async function syncNow() {
   await requireAdmin()
-  back('/admin', 'ok', await syncEvents())
+  await back('/admin', 'ok', await syncEvents())
 }
 export async function syncPlacesNow() {
   await requireAdmin()
-  back('/admin', 'ok', await syncPlaces(Date.now() + 200_000))
+  await back('/admin', 'ok', await syncPlaces(Date.now() + 200_000))
 }
 const MODERATION = { reviews: ['visible', 'hidden'], listings: ['active', 'hidden'], wishes: ['visible', 'hidden'], events: ['published', 'rejected'], places: ['published', 'hidden'] } as const
 export async function moderate(fd: FormData) {

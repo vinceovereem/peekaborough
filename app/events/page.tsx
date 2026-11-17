@@ -4,6 +4,7 @@ import SubmitButton from '@/components/SubmitButton'
 import CalendarPicker from '@/components/CalendarPicker'
 import { SampleTag, EventTags, Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, HOOD, type EventKind } from '@/lib/config'
 import { formatDay, formatTime, dayKey } from '@/lib/hours'
@@ -15,8 +16,9 @@ export const metadata = { title: "What's on" }
 
 const KINDS = Object.keys(EVENT_KINDS) as EventKind[]
 
-export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; available?: string; ok?: string; error?: string }> }) {
-  const [user, { kinds = '', available, ...flash }] = await Promise.all([requireVisitor(), searchParams])
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; available?: string; flash?: string }> }) {
+  const [user, { kinds = '', available, ...rest }] = await Promise.all([requireVisitor(), searchParams])
+  const flash = await readFlash(rest)
   const picked = KINDS.filter(k => kinds.split(',').includes(k)) // several can be on at once
   const hideSoldOut = available === '1'
   const href = (ks: EventKind[], hide: boolean) => { const q = [ks.length && `kinds=${ks.join(',')}`, hide && 'available=1'].filter(Boolean).join('&'); return q ? `/events?${q}` : '/events' }

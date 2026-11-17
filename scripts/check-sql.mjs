@@ -108,6 +108,41 @@ await denied(A, `select 1 from public.admin_applications`, "read someone else's 
 await denied(null, `select 1 from public.admin_applications`, 'anon cannot read applications')
 await denied(B, `update public.admin_applications set status = 'approved' where user_id = '${B}'`, 'approve your own application')
 
+// --- private votes and admin status, web-only links, daily limits, the Ask allowance (third migration) ---
+await denied(B, `select 1 from public.wish_votes where user_id = '${A}'`, 'see how someone else voted')
+await denied(null, `select 1 from public.wish_votes`, 'anon cannot see who voted')
+await allowed(B, `select 1 from public.wish_votes where user_id = '${B}'`, 'see your own vote')
+await allowed(null, `select 1 from public.wish_tallies(array(select id from public.wishes)) where ups = 0 and downs = 2`, 'anyone reads the totals')
+await allowed(null, `select display_name from public.profiles limit 1`, 'anyone reads profile names')
+await denied(null, `select is_admin from public.profiles`, 'anon cannot list the admins')
+await denied(B, `select is_admin from public.profiles`, 'members cannot list the admins')
+await denied(B, `select avatar_url from public.profiles`, "read people's pictures")
+await denied(A, `update public.profiles set avatar_url = 'https://example.com/x.png' where id = '${A}'`, 'point your picture at another site')
+await denied(null, `select public.is_admin()`, 'anon cannot ask who is an admin')
+await allowed(A, `select 1 where not public.is_admin()`, 'not an admin by default')
+await db.exec(`update public.profiles set is_admin = true where id = '${A}'`) // an admin promotes Alice
+await allowed(A, `select 1 where public.is_admin()`, 'an admin is told so')
+await allowed(B, `select 1 where not public.is_admin()`, "someone else's admin status is not yours")
+
+await denied(A, `update public.places set website = 'javascript:alert(1)' where id = '${place}'`, 'a website that is not a web address')
+await denied(A, `update public.places set booking_url = 'https://example.com/a b' where id = '${place}'`, 'a booking link with a space in it')
+await allowed(A, `update public.places set website = 'https://example.com' where id = '${place}' returning id`, 'owner sets a website')
+await denied(A, `update public.places set cover_url = 'https://example.com/x.png' where id = '${place}'`, 'owner cannot point the photo at another site')
+const EVENT = `(title, kind, venue_name, lat, lng, starts_at, status, created_by`
+await denied(B, `insert into public.events ${EVENT}, url) values ('Bad link', 'music', 'x', 51.5, -0.1, now(), 'pending', '${B}', E'https://example.com/\\nATTENDEE:x')`, 'an event link that would add lines to the calendar feed')
+await allowed(B, `insert into public.events ${EVENT}, url) values ('Good link', 'music', 'x', 51.5, -0.1, now(), 'pending', '${B}', 'https://example.com/tickets') returning id`, 'an event with a web link')
+
+for (let i = 0; i < 9; i++) await allowed(B, `insert into public.wishes (user_id, title) values ('${B}', 'Idea ${i}') returning id`, 'ten ideas in a day')
+await denied(B, `insert into public.wishes (user_id, title) values ('${B}', 'One too many')`, 'an eleventh idea in a day')
+await allowed(A, `insert into public.wishes (user_id, title) values ('${A}', 'A bakery') returning id`, "one person's limit is not another's")
+await allowed(B, `insert into public.events ${EVENT}, created_at) values ('Back-dated', 'music', 'x', 51.5, -0.1, now(), 'pending', '${B}', '2000-01-01') returning id`, 'a back-dated suggestion is accepted')
+assert.equal((await one(`select count(*)::int n from public.events where created_by = '${B}' and created_at < now() - interval '1 day'`)).n, 0, 'but it is dated now, so it still counts towards the limit')
+
+for (let i = 0; i < 30; i++) await allowed(A, `select 1 where public.take_ask_turn()`, 'thirty questions an hour')
+await denied(A, `select 1 where public.take_ask_turn()`, 'a thirty-first question in the hour')
+await allowed(B, `select 1 where public.take_ask_turn()`, "one person's questions do not use up another's")
+await denied(null, `select public.take_ask_turn()`, 'anon cannot ask')
+
 // --- borough poll: one vote per signed-in person, through their own session ---
 const VOTE = (uid, b = 'Camden') => `insert into public.borough_votes (borough, user_id) values ('${b}', '${uid}') returning id`
 await denied(null, `insert into public.borough_votes (borough) values ('Camden') returning id`, 'anon votes')
@@ -122,4 +157,4 @@ await denied(A, `delete from public.borough_votes where user_id = '${A}'`, 'take
 await denied(null, `select 1 from public.borough_votes`, 'anon reads the votes')
 await assert.rejects(db.exec(`insert into public.borough_votes (borough) values (' ')`), 'a blank name is refused')
 
-console.log('✔ migrations + seed apply cleanly; 66 access rules hold')
+console.log('✔ migrations + seed apply cleanly; 93 access rules hold')

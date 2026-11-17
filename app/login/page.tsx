@@ -17,6 +17,13 @@ const FEATURES = [
 export const metadata = { alternates: { canonical: '/' } }
 const STRUCTURED = { '@context': 'https://schema.org', '@type': 'WebSite', name: APP_NAME, url: SITE_URL, description: `A free neighbourhood guide to the London Borough of ${HOOD.name}: places, events, local news and what the area needs.`, inLanguage: 'en-GB', about: { '@type': 'AdministrativeArea', name: `London Borough of ${HOOD.name}` } }
 
+// The address only says which of these to show, never the words themselves.
+const ERRORS = new Map([
+  ['preview', 'Signing in is not available on this preview yet — you can still look around.'],
+  ['start', 'Could not start Google sign-in'],
+  ['callback', 'Sign-in did not complete, please try again'],
+])
+
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const { error, next } = await searchParams
   const applying = next === '/apply'
@@ -36,7 +43,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <li key={title} className="flex gap-3"><span aria-hidden className="text-xl">{emoji}</span><span><b>{title}</b> <span className="muted">{rest}</span></span></li>
             ))}
           </ul>
-          <div className="mt-6"><Flash error={error} ok={applying ? 'Sign in with Google first — then you can apply to be an admin.' : undefined} /></div>
+          <div className="mt-6"><Flash error={ERRORS.get(error ?? '')} ok={applying ? 'Sign in with Google first — then you can apply to be an admin.' : undefined} /></div>
           <form action={googleSignIn}>
               {applying && <input type="hidden" name="next" value="/apply" />}
               <button className="btn btn-white w-full text-lg">
