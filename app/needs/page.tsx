@@ -2,6 +2,7 @@ import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import { Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { HOOD } from '@/lib/config'
 import { formatDay } from '@/lib/hours'
@@ -9,8 +10,8 @@ import { createWish, voteOnWish } from '@/app/actions'
 
 export const metadata = { title: 'What the area needs' }
 
-export default async function NeedsPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, flash] = await Promise.all([requireVisitor(), searchParams])
+export default async function NeedsPage({ searchParams }: { searchParams: Promise<{ flash?: string }> }) {
+  const [user, flash] = await Promise.all([requireVisitor(), searchParams.then(readFlash)])
   const wishes = await repo.wishes(user?.id ?? null)
   return (
     <Shell title={`What ${HOOD.name} needs`} intro="Is something missing round here? Say it, then vote ideas up or down — a ranked list the council and new businesses can act on." flash={flash}>

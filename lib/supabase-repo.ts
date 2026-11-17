@@ -57,11 +57,13 @@ export const supabaseRepo: Repo = {
     const rows = ok(await (await createClient()).from('listings').select('*, profiles(display_name)').in('status', ['active', 'closed']).order('created_at', { ascending: false }).limit(200))
     return rows.map((r: any) => ({ ...r, author: author(r) })) as Listing[]
   },
-  async wishes(userId) {
-    // wishes relate to profiles twice (the author, and voters through wish_votes), so the author link is named
-    // ponytail: pulls every vote row to count them; move to a count view once wishes get hundreds of votes.
-    const rows = ok(await (await createClient()).from('wishes').select('*, profiles!wishes_user_id_fkey(display_name), wish_votes(user_id, value)').eq('status', 'visible').limit(200))
-    return rows.map((r: any): Wish => ({ id: r.id, user_id: r.user_id, title: r.title, description: r.description, status: r.status, created_at: r.created_at, author: author(r), ...tally(r, userId) }))
+  async wishes() {
+    // wishes relate to profiles twice (the author, and voters through wish_votes), so the author link is named.
+    // Who voted is private: the database hands back only the caller's own vote row, and the totals come from wish_tallies().
+    const db = await createClient()
+    const rows = ok(await db.from('wishes').select('*, profiles!wishes_user_id_fkey(display_name), wish_votes(value)').eq('status', 'visible').limit(200))
+    const totals = new Map((ok(await db.rpc('wish_tallies', { ids: rows.map((r: any) => r.id) })) as { wish_id: string; ups: number; downs: number }[]).map(t => [t.wish_id, t]))
+    return rows.map((r: any): Wish => ({ id: r.id, user_id: r.user_id, title: r.title, description: r.description, status: r.status, created_at: r.created_at, author: author(r), ups: totals.get(r.id)?.ups ?? 0, downs: totals.get(r.id)?.downs ?? 0, mine: r.wish_votes[0]?.value ?? 0 }))
       .sort((a, b) => (b.ups - b.downs) - (a.ups - a.downs) || b.created_at.localeCompare(a.created_at))
   },
   async isOwner(userId, placeId) {
@@ -128,13 +130,17 @@ export const supabaseRepo: Repo = {
   },
   async deleteEvent(placeId, eventId) { ok(await (await createClient()).from('events').delete().eq('id', eventId).eq('place_id', placeId).select('id')) },
   async setGooglePlaceId(placeId, googleId) { ok(await createAdminClient().from('places').update({ google_place_id: googleId }).eq('id', placeId).select('id')) },
+  async takeAskTurn() { return ok(await (await createClient()).rpc('take_ask_turn')) === true },
   async uploadCover(placeId, file) {
-    // Caller has verified ownership. The bucket is public-read; only the service role writes to it.
+    // Caller has verified ownership. The bucket is public-read; only the service role writes to it,
+    // and only the service role records the photo's address, so a page can never show a picture from elsewhere.
     const path = `${placeId}/cover-${Date.now()}.${file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'}`
-    const storage = createAdminClient().storage.from('place-photos')
+    const db = createAdminClient(), storage = db.storage.from('place-photos')
     const { error } = await storage.upload(path, file, { contentType: file.type })
     if (error) throw new Error(error.message)
-    return storage.getPublicUrl(path).data.publicUrl
+    const url = storage.getPublicUrl(path).data.publicUrl
+    ok(await db.from('places').update({ cover_url: url }).eq('id', placeId).select('id'))
+    return url
   },
 
   async adminData() {

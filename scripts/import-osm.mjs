@@ -161,6 +161,8 @@ async function wikidataImages(ids) {
   return out
 }
 // Commons serves any file at a given width from this stable URL; the file page carries author + licence.
+// Mappers sometimes leave off the "https://". The database only accepts web addresses, so add it or drop the value.
+const web = v => !v || /\s/.test(v) ? null : /^https?:\/\//i.test(v) ? v : /^[a-z][a-z0-9+.-]*:/i.test(v) ? null : `https://${v}`
 const commonsPhoto = f => ({ url: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(f.replace(/ /g, '_'))}?width=1000`, credit_url: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(f.replace(/ /g, '_'))}` })
 const commonsFile = t => [t.wikimedia_commons, t.image].map(v => v?.match(/(?:^|\/)File:(.+\.(?:jpe?g|png|webp))$/i)?.[1]).find(Boolean)
 
@@ -202,7 +204,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       address: [[t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' '), t['addr:postcode']].filter(Boolean).join(', ') || null,
       lat: +lat.toFixed(6), lng: +lng.toFixed(6),
       phone: t.phone ?? t['contact:phone'] ?? null,
-      website: t.website ?? t['contact:website'] ?? null,
+      website: web(t.website ?? t['contact:website']),
       booking_url: [t['reservation:website'], t['website:booking'], t['booking']].find(v => /^https?:\/\//.test(v ?? '')) ?? null,
       hours, hours_note: hours ? null : t.opening_hours ?? null,
       cover_url: null, google_place_id: null, extra, is_landmark: false, is_demo: false, verified: false, status: 'published',

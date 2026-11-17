@@ -2,21 +2,12 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { getUser } from '@/lib/auth'
 import { ask, ASK_ENABLED } from '@/lib/assistant'
+import { repo } from '@/lib/repo'
 
 const Body = z.object({
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().trim().min(1).max(4000) })).min(1).max(20)
     .refine(m => m[m.length - 1].role === 'user', 'The last message must be a question'),
 })
-
-// Every question costs money, so cap each person. ponytail: counted per server instance, so the real
-// ceiling is higher when several are running — move to the database or a rate-limit service at launch.
-const LIMIT = 30, WINDOW = 3600_000
-const recent = new Map<string, number[]>()
-function allowed(userId: string) {
-  const times = (recent.get(userId) ?? []).filter(t => t > Date.now() - WINDOW)
-  recent.set(userId, [...times, Date.now()])
-  return times.length < LIMIT
-}
 
 const say = (error: string, status: number) => Response.json({ error }, { status })
 // What visitors see when the guide can't answer. The real reason goes to the server log, never to them.
@@ -29,8 +20,9 @@ export async function POST(request: Request) {
   if (!ASK_ENABLED) return say(SOON, 503)
   const body = Body.safeParse(await request.json().catch(() => null))
   if (!body.success) return say('Ask a question of up to 4,000 characters.', 400)
-  if (!allowed(user.id)) return say('That’s a lot of questions — give it a little while and try again.', 429)
   try {
+    // Every question costs money, so each person gets 30 an hour, counted in the database (take_ask_turn).
+    if (!(await repo.takeAskTurn(user.id))) return say('That’s a lot of questions — give it a little while and try again.', 429)
     return Response.json({ answer: await ask(body.data.messages, user) })
   } catch (e) {
     console.error('Ask failed', e)

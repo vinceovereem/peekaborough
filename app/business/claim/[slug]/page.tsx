@@ -2,13 +2,14 @@ import { notFound, redirect } from 'next/navigation'
 import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import { requireUser } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { submitClaim } from '@/app/actions'
 
 export const metadata = { title: 'Claim your page' }
 
-export default async function ClaimPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, { slug }, flash] = await Promise.all([requireUser(), params, searchParams])
+export default async function ClaimPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ flash?: string }> }) {
+  const [user, { slug }, flash] = await Promise.all([requireUser(), params, searchParams.then(readFlash)])
   const place = await repo.place(slug)
   if (!place) notFound()
   if (await repo.isOwner(user.id, place.id)) redirect(`/business/${place.id}`)

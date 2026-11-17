@@ -1,5 +1,6 @@
 import { APP_NAME, HOOD } from './config.ts' // .ts extensions: this file also runs under plain `node --test`
 import { formatPrice } from './hours.ts'
+import { isWebLink } from './links.ts'
 import type { Event } from './types'
 
 type E = Pick<Event, 'id' | 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'>
@@ -24,7 +25,7 @@ export function toICS(events: E[], name = APP_NAME, now = new Date()): string {
     'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//${APP_NAME}//EN`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${esc(name)}`, 'X-WR-TIMEZONE:Europe/London',
     ...events.flatMap(e => [
       'BEGIN:VEVENT', `UID:${e.id}@peekaborough`, `DTSTAMP:${stamp(now.toISOString())}`, `DTSTART:${stamp(e.starts_at)}`, `DTEND:${stamp(end(e))}`,
-      `SUMMARY:${esc(e.title)}`, `LOCATION:${esc(where(e))}`, `GEO:${e.lat};${e.lng}`, details(e) && `DESCRIPTION:${esc(details(e))}`, e.url && `URL:${e.url}`, 'END:VEVENT',
+      `SUMMARY:${esc(e.title)}`, `LOCATION:${esc(where(e))}`, `GEO:${e.lat};${e.lng}`, details(e) && `DESCRIPTION:${esc(details(e))}`, e.url && isWebLink(e.url) && `URL:${e.url}`, 'END:VEVENT',
     ]),
     'END:VCALENDAR',
   ].filter((l): l is string => !!l).map(fold).join('\r\n') + '\r\n'

@@ -6,6 +6,7 @@ import PlacePicture from '@/components/PlacePicture'
 import SubmitButton from '@/components/SubmitButton'
 import { Stars, CategoryTag, OpenBadge, VerifiedTag, SampleTag, LinePills, Flash, Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { googlePlace } from '@/lib/google'
 import { googleMapsUrl, directionsUrl } from '@/lib/links'
@@ -15,7 +16,7 @@ import { EVENT_KINDS } from '@/lib/config'
 import { DAY_KEYS, DAY_LABELS, londonNow, formatPrice, formatDay, formatTime } from '@/lib/hours'
 import { addReview, moderate, toggleFavorite } from '@/app/actions'
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ ok?: string; error?: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ flash?: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const place = await repo.place((await params).slug)
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const GoogleMapsCredit = () => <span style={{ fontFamily: 'Roboto, Arial, sans-serif', fontWeight: 400, color: '#5e5e5e', whiteSpace: 'nowrap' }}>Google Maps</span>
 
 export default async function PlacePage({ params, searchParams }: Props) {
-  const [user, { slug }, flash] = await Promise.all([requireVisitor(), params, searchParams]) // null: looking around without an account
+  const [user, { slug }, flash] = await Promise.all([requireVisitor(), params, searchParams.then(readFlash)]) // null: looking around without an account
   const place = await repo.place(slug)
   if (!place || (place.status === 'hidden' && !user?.is_admin)) notFound()
   const lines = place.extra.lines

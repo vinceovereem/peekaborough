@@ -3,6 +3,7 @@ import Shell from '@/components/Shell'
 import SubmitButton from '@/components/SubmitButton'
 import { Stars, CategoryTag, Empty } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { LISTING_KINDS } from '@/lib/config'
 import { formatDay } from '@/lib/hours'
@@ -10,8 +11,8 @@ import { saveProfile } from '@/app/actions'
 
 export const metadata = { title: 'My profile' }
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [user, flash] = await Promise.all([requireVisitor(), searchParams])
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ flash?: string }> }) {
+  const [user, flash] = await Promise.all([requireVisitor(), searchParams.then(readFlash)])
   if (!user) return (
     <Shell title="My profile">
       <section className="card mt-4 max-w-xl p-6">

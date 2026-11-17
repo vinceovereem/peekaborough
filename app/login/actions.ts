@@ -20,12 +20,12 @@ export async function skipSignIn() {
 }
 
 export async function googleSignIn() {
-  if (DEMO) redirect('/login?error=Signing in is not available on this preview yet — you can still look around.')
+  if (DEMO) redirect('/login?error=preview')
   const h = await headers()
   const origin = h.get('origin') ?? `https://${h.get('host')}`
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${origin}/auth/callback` } })
-  redirect(error || !data.url ? '/login?error=Could not start Google sign-in' : data.url)
+  redirect(error || !data.url ? '/login?error=start' : data.url)
 }
 
 export async function signOut() {

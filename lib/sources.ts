@@ -5,6 +5,7 @@
 // way to list Eventbrite events is for the organiser to add them (or their Eventbrite link) by hand.
 import { APP_NAME, SITE_URL, HOOD, inArea, type EventKind } from './config'
 import { repo } from './repo'
+import { isWebLink } from './links'
 import type { Event } from './types'
 
 export type ExternalEvent = Pick<Event, 'title' | 'description' | 'kind' | 'venue_name' | 'lat' | 'lng' | 'starts_at' | 'ends_at' | 'url' | 'price_pence'> & { source: string; source_id: string }
@@ -21,6 +22,7 @@ const pence = (v: unknown) => { const n = typeof v === 'number' ? v : parseFloat
 // where about 50 events a day are listed: Skiddle's 30 pages of 100 cover roughly two months (the first live run,
 // at 5 pages, reached 10 days). Ticketmaster lets nobody page past 1,000. Search by venue if either bites.
 const MAX_PAGES = 5
+const link = (v: unknown) => typeof v === 'string' && v.length <= 300 && isWebLink(v) ? v : null // anything else would fail the whole batch in the database
 const clip = (s: unknown, max: number) => typeof s === 'string' && s.trim() ? s.trim().replace(/<[^>]+>/g, '').slice(0, max) : null
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- third-party JSON */
@@ -36,7 +38,7 @@ async function skiddle(key: string): Promise<ExternalEvent[]> {
   return found.flatMap((e: any): ExternalEvent[] => e?.id && e.startdate && e.venue?.latitude ? [{
     source: 'Skiddle', source_id: String(e.id), title: clip(e.eventname, 120) ?? 'Event', description: clip(e.description, 600), kind: SKIDDLE_KINDS[e.EventCode] ?? 'community',
     venue_name: clip(e.venue.name, 120) ?? 'Venue', lat: +e.venue.latitude, lng: +e.venue.longitude,
-    starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: e.link ?? null,
+    starts_at: new Date(e.startdate).toISOString(), ends_at: e.enddate ? new Date(e.enddate).toISOString() : null, url: link(e.link),
     price_pence: /free/i.test(String(e.entryprice)) ? 0 : pence(e.entryprice),
   }] : [])
 }
@@ -56,7 +58,7 @@ async function ticketmaster(key: string): Promise<ExternalEvent[]> {
       source: 'Ticketmaster', source_id: String(e.id), title: clip(e.name, 120) ?? 'Event', description: clip(e.info ?? e.pleaseNote, 600),
       kind: segment === 'Music' ? 'music' : segment === 'Sports' ? (/football|soccer/i.test(genre ?? '') ? 'football' : 'sport') : segment === 'Arts & Theatre' ? 'arts' : 'community',
       venue_name: clip(venue.name, 120) ?? 'Venue', lat: +venue.location.latitude, lng: +venue.location.longitude,
-      starts_at: new Date(e.dates.start.dateTime).toISOString(), ends_at: null, url: e.url ?? null, price_pence: pence(e.priceRanges?.[0]?.min),
+      starts_at: new Date(e.dates.start.dateTime).toISOString(), ends_at: null, url: link(e.url), price_pence: pence(e.priceRanges?.[0]?.min),
     }]
   })
 }

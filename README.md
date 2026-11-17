@@ -85,7 +85,7 @@ name and logo, and link to the event on Skiddle.
 The ✨ Ask button on the map opens a chat that answers from the app's own data. Set
 `ANTHROPIC_API_KEY` to switch it on. It uses Claude (`claude-opus-5-5`) with three tools — search
 places, what's on, local buzz — in `lib/assistant.ts`. Each question costs a few pence, and each person
-is capped at 30 an hour. Not yet tested with a real key: it type-checks against the SDK and the "no key"
+is capped at 30 an hour (counted in the database, so it holds across servers). Not yet tested with a real key: it type-checks against the SDK and the "no key"
 path works, but no question has been answered live.
 
 ## Google Maps: what's allowed, and how it's wired
@@ -126,7 +126,7 @@ Google and Outlook subscriptions need the site to be on a public address.
 
 1. **Supabase** — create a project (London region). Then either
    - CLI: `npx supabase init`, `npx supabase link`, `npx supabase db push --include-seed`; or
-   - SQL Editor: run `supabase/migrations/20261115000000_init.sql`, then `supabase/seed.sql` (about 1 MB —
+   - SQL Editor: run each file in `supabase/migrations/` in date order, then `supabase/seed.sql` (about 1 MB —
      use the CLI if the editor refuses it).
 2. **Google sign-in** — in Google Cloud Console create an OAuth client (type: Web application) with the
    authorised redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`. Paste the client ID and

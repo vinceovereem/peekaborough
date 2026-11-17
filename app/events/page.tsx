@@ -4,6 +4,7 @@ import SubmitButton from '@/components/SubmitButton'
 import CalendarPicker from '@/components/CalendarPicker'
 import { SampleTag, Empty, SignInPrompt } from '@/components/ui'
 import { requireVisitor } from '@/lib/auth'
+import { readFlash } from '@/lib/flash'
 import { repo } from '@/lib/repo'
 import { EVENT_KINDS, HOOD, type EventKind } from '@/lib/config'
 import { formatDay, formatTime, formatPrice, dayKey } from '@/lib/hours'
@@ -15,8 +16,9 @@ export const metadata = { title: "What's on" }
 
 const KINDS = Object.keys(EVENT_KINDS) as EventKind[]
 
-export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; ok?: string; error?: string }> }) {
-  const [user, { kinds = '', ...flash }] = await Promise.all([requireVisitor(), searchParams])
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ kinds?: string; flash?: string }> }) {
+  const [user, { kinds = '', ...rest }] = await Promise.all([requireVisitor(), searchParams])
+  const flash = await readFlash(rest)
   const picked = KINDS.filter(k => kinds.split(',').includes(k)) // several can be on at once
   const toggled = (k: EventKind) => { const next = picked.includes(k) ? picked.filter(x => x !== k) : [...picked, k]; return next.length ? `/events?kinds=${next.join(',')}` : '/events' }
   const all = await repo.events()

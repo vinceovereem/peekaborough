@@ -17,8 +17,12 @@ export const getUser = cache(async (): Promise<User | null> => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser() // verified with the auth server, not just read from the cookie
   if (!user) return null
-  const { data: profile } = await supabase.from('profiles').select('display_name, avatar_url, is_admin, place_owners(place_id)').eq('id', user.id).maybeSingle()
-  return { id: user.id, name: profile?.display_name ?? 'Neighbour', email: user.email ?? null, avatar_url: profile?.avatar_url ?? null, is_admin: !!profile?.is_admin, is_owner: !!profile?.place_owners?.length }
+  // is_admin is not a readable column: the database answers it for the caller only, so nobody can list the admins
+  const [{ data: profile }, { data: isAdmin }] = await Promise.all([
+    supabase.from('profiles').select('display_name, place_owners(place_id)').eq('id', user.id).maybeSingle(),
+    supabase.rpc('is_admin'),
+  ])
+  return { id: user.id, name: profile?.display_name ?? 'Neighbour', email: user.email ?? null, avatar_url: user.user_metadata?.avatar_url ?? null, is_admin: isAdmin === true, is_owner: !!profile?.place_owners?.length }
 })
 
 export async function requireUser(): Promise<User> {
